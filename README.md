@@ -67,6 +67,8 @@ demo. This project aims higher:
 - [docs/09_SECURITY_AND_PRIVACY.md](docs/09_SECURITY_AND_PRIVACY.md): security
   posture, threat model, and ethical use policy.
 - [docs/10_PILOT_PITCH.md](docs/10_PILOT_PITCH.md): buyer-facing pilot pitch.
+- [docs/11_STRICT_PRODUCT_SCORECARD.md](docs/11_STRICT_PRODUCT_SCORECARD.md):
+  manager-grade readiness gates and dataset standards.
 - [docs/design/PRODUCT_LANGUAGE.md](docs/design/PRODUCT_LANGUAGE.md): visual
   direction for a non-sloppy, trust-first demo experience.
 
@@ -82,6 +84,7 @@ make robustness-demo
 make chain-demo
 make contracts-compile
 make api-openapi
+npm run build:web
 ```
 
 Run the optional deep-model smoke after InsightFace dependencies are available:
@@ -118,15 +121,21 @@ Run the interactive Streamlit dashboard:
 make demo-app
 ```
 
+Run the React pilot console:
+
+```bash
+make web
+```
+
 Run the product API:
 
 ```bash
 make api
 ```
 
-The current embedder is a deterministic smoke-test embedder, not a real face
-model. It exists so the metrics, privacy, contract, and UI layers can be wired
-before adding PyTorch/InsightFace dependencies.
+The default embedder is a deterministic smoke-test path, not a final biometric
+claim. The API also supports base64 image payloads and optional InsightFace
+image inference after the deep dependencies and model packs are installed.
 
 ## Current Implementation
 
@@ -140,7 +149,9 @@ before adding PyTorch/InsightFace dependencies.
 - Solidity contract draft in `contracts/TrustFaceChain.sol`.
 - Static demo dashboard in `app/`.
 - Interactive Streamlit dashboard in `app/streamlit_app.py`.
+- React pilot console in `web/`.
 - Optional InsightFace deep smoke reports in `reports/lfw_deep_smoke_metrics.csv`.
+- Full official LFW classical baseline in `reports/lfw_full_classical_metrics.csv`.
 - Deployment starter files: `Dockerfile`, `.dockerignore`, `requirements.txt`.
 - Unit tests in `tests/`.
 

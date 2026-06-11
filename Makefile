@@ -1,4 +1,7 @@
-.PHONY: test smoke benchmark-demo chain-demo robustness-demo deep-smoke contracts-compile api api-openapi demo-app check
+API_HOST ?= 127.0.0.1
+API_PORT ?= 8080
+
+.PHONY: test smoke benchmark-demo chain-demo robustness-demo deep-smoke contracts-compile api api-openapi web build-web demo-app check
 
 test:
 	PYTHONPATH=src python3 -m unittest discover -s tests
@@ -22,12 +25,18 @@ contracts-compile:
 	npm run compile:contracts
 
 api:
-	PYTHONPATH=src python3 -m uvicorn trustfacechain.api:app --host 127.0.0.1 --port 8080
+	PYTHONPATH=src python3 -m uvicorn trustfacechain.api:app --host $(API_HOST) --port $(API_PORT)
 
 api-openapi:
 	PYTHONPATH=src python3 scripts/export-openapi.py
 
-check: test smoke benchmark-demo chain-demo robustness-demo contracts-compile api-openapi
+web:
+	npm run web
+
+build-web:
+	npm run build:web
+
+check: test smoke benchmark-demo chain-demo robustness-demo contracts-compile api-openapi build-web
 
 demo-app:
 	PYTHONPATH=src streamlit run app/streamlit_app.py --server.address 127.0.0.1 --server.port 8501 --server.headless true --browser.gatherUsageStats false

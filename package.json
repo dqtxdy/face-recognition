@@ -4,9 +4,19 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "compile:contracts": "node scripts/compile-contracts.js"
+    "compile:contracts": "node scripts/compile-contracts.js",
+    "web": "vite --host 0.0.0.0 --port 5173",
+    "build:web": "vite build",
+    "preview:web": "vite preview --host 0.0.0.0 --port 4173"
   },
   "devDependencies": {
     "solc": "^0.8.35"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "^6.0.2",
+    "lucide-react": "^1.17.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "vite": "^8.0.16"
   }
 }

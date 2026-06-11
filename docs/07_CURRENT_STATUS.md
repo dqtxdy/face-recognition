@@ -61,12 +61,18 @@ Not yet done:
 Working:
 
 - Streamlit app at `app/streamlit_app.py`.
+- React pilot console at `web/`.
 - Enrollment simulation.
 - Verification simulation.
 - Audit event table.
 - Template revocation.
 - Benchmark report display.
 - Robustness report display.
+
+Clarification:
+
+- Streamlit is the research dashboard.
+- React is the product-facing pilot console.
 
 ### Product API
 
@@ -87,6 +93,7 @@ Working:
 - Metrics endpoint.
 - OpenAPI export.
 - Optional `X-TrustFace-Key` API-key protection for `/v1/*` endpoints.
+- CORS allowlist for the local React console.
 
 Current API caveat:
 
@@ -128,6 +135,7 @@ make chain-demo
 make robustness-demo
 make contracts-compile
 make api-openapi
+make build-web
 make check
 ```
 
@@ -159,6 +167,30 @@ Current deep smoke outputs:
 
 - `reports/lfw_deep_smoke_metrics.csv`
 - `reports/lfw_deep_smoke_report.json`
+
+The full official LFW protocol passed for the classical baseline stack:
+
+```bash
+PYTHONPATH=src python3 -m trustfacechain.cli benchmark-lfw-pairs \
+  --models pixel,dct,lbp,eigenfaces \
+  --csv reports/lfw_full_classical_metrics.csv \
+  --json reports/lfw_full_classical_report.json
+```
+
+Outputs:
+
+- `reports/lfw_full_classical_metrics.csv`
+- `reports/lfw_full_classical_report.json`
+
+Current 6000-pair LFW classical results:
+
+- `pixel-cosine`: accuracy `0.6167`, EER `0.3897`.
+- `dct-low-frequency`: accuracy `0.5983`, EER `0.4133`.
+- `lbp-histogram`: accuracy `0.5532`, EER `0.4623`.
+- `eigenfaces-pca`: accuracy `0.6180`, EER `0.3887`.
+
+Manager interpretation: these are baselines, not competitive biometric models.
+They justify the deep-model track rather than replacing it.
 
 The Solidity compile path passed:
 
@@ -207,6 +239,8 @@ Output:
   final deep-learning claim.
 - The deep smoke currently uses only 20 balanced official LFW pairs. Final
   results should use the full LFW protocol plus harder benchmarks.
+- The full 6000-pair LFW run has been completed for classical baselines only.
+  Deep full-protocol runs are still needed for final model claims.
 - Final capstone results should still add FaceNet and AdaFace/MagFace if time
   allows.
 

@@ -56,6 +56,19 @@ When `--max-pairs` is used, the loader returns a balanced subset by default.
 Use `--unbalanced` only when deliberately reproducing the raw beginning of
 `pairs.txt`.
 
+## LFW Full Classical Baseline
+
+```bash
+PYTHONPATH=src python3 -m trustfacechain.cli benchmark-lfw-pairs \
+  --models pixel,dct,lbp,eigenfaces \
+  --csv reports/lfw_full_classical_metrics.csv \
+  --json reports/lfw_full_classical_report.json
+```
+
+This runs the full official 6000-pair LFW protocol for the lightweight baseline
+stack. The current result confirms that classical baselines are weak and should
+be presented as justification for deep architectures, not as the final model.
+
 ## Folder Benchmark
 
 Use this when the group has a local consent-based demo dataset:
@@ -135,8 +148,42 @@ Then open:
 http://127.0.0.1:8501
 ```
 
-The Streamlit dashboard is the current primary demo surface. The static HTML
-prototype remains in `app/index.html` as a visual reference.
+The Streamlit dashboard is the research surface for benchmark inspection. The
+static HTML prototype remains in `app/index.html` as a visual reference.
+
+## React Pilot Console
+
+```bash
+make web
+```
+
+Default URL:
+
+```text
+http://127.0.0.1:5173
+```
+
+Use a non-default API URL:
+
+```bash
+VITE_TRUSTFACECHAIN_API_URL=http://127.0.0.1:18080 make web
+```
+
+Or pass it in the browser URL:
+
+```text
+http://127.0.0.1:5173/?apiUrl=http://127.0.0.1:18080
+```
+
+Build check:
+
+```bash
+make build-web
+```
+
+The React console is the product-facing pilot surface. It talks to the FastAPI
+service for enrollment, verification, revocation, audit, and metrics. Streamlit
+remains the research dashboard for benchmark inspection.
 
 ## Product API
 
@@ -150,6 +197,12 @@ Default URL:
 http://127.0.0.1:8080
 ```
 
+Use another API port:
+
+```bash
+make api API_PORT=18080
+```
+
 Optional API key mode:
 
 ```bash
@@ -158,6 +211,21 @@ TRUSTFACECHAIN_API_KEY=dev-secret make api
 
 Then include `X-TrustFace-Key: dev-secret` on every `/v1/*` request. The
 health endpoint remains open for uptime checks.
+
+Browser access:
+
+The API allows local React dev and preview origins by default:
+
+- `http://127.0.0.1:5173`
+- `http://localhost:5173`
+- `http://127.0.0.1:5174`
+- `http://localhost:5174`
+- `http://127.0.0.1:5175`
+- `http://localhost:5175`
+- `http://127.0.0.1:4173`
+- `http://localhost:4173`
+
+Set `TRUSTFACECHAIN_CORS_ORIGINS` to override this comma-separated allowlist.
 
 Smoke-tested HTTP flow:
 
