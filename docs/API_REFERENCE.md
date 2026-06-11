@@ -15,6 +15,9 @@ Default URL:
 http://127.0.0.1:8080
 ```
 
+If port `8080` is occupied during local demos, run Uvicorn manually on another
+port and set the React console API URL field to that address.
+
 Optional API key protection:
 
 ```bash
@@ -28,6 +31,19 @@ X-TrustFace-Key: dev-secret
 ```
 
 `/health` stays unauthenticated for uptime checks.
+
+Local browser origins allowed by default:
+
+- `http://127.0.0.1:5173`
+- `http://localhost:5173`
+- `http://127.0.0.1:5174`
+- `http://localhost:5174`
+- `http://127.0.0.1:5175`
+- `http://localhost:5175`
+- `http://127.0.0.1:4173`
+- `http://localhost:4173`
+
+Set `TRUSTFACECHAIN_CORS_ORIGINS` to override the comma-separated allowlist.
 
 Export OpenAPI:
 

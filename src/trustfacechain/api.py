@@ -8,6 +8,7 @@ import secrets
 from typing import Any
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from trustfacechain.product_service import (
@@ -70,6 +71,22 @@ def _api_key_guard(configured_api_key: str | None):
     return guard
 
 
+def _cors_origins() -> list[str]:
+    configured = os.environ.get("TRUSTFACECHAIN_CORS_ORIGINS")
+    if configured:
+        return [origin.strip() for origin in configured.split(",") if origin.strip()]
+    return [
+        "http://127.0.0.1:5173",
+        "http://localhost:5173",
+        "http://127.0.0.1:5174",
+        "http://localhost:5174",
+        "http://127.0.0.1:5175",
+        "http://localhost:5175",
+        "http://127.0.0.1:4173",
+        "http://localhost:4173",
+    ]
+
+
 def create_app(
     *,
     service: TrustFaceProductService | None = None,
@@ -88,6 +105,12 @@ def create_app(
     app.state.service = service or build_product_service(
         db_path=db_path,
         key_path=key_path,
+    )
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=_cors_origins(),
+        allow_methods=["GET", "POST", "OPTIONS"],
+        allow_headers=["Content-Type", "X-TrustFace-Key"],
     )
     configured_api_key = api_key if api_key is not None else os.environ.get(
         "TRUSTFACECHAIN_API_KEY"

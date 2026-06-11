@@ -145,6 +145,24 @@ class ApiTest(unittest.TestCase):
 
         asyncio.run(run())
 
+    def test_cors_allows_react_console_origin(self):
+        async def run():
+            async with self._client() as client:
+                response = await client.options(
+                    "/v1/metrics",
+                    headers={
+                        "Origin": "http://127.0.0.1:5173",
+                        "Access-Control-Request-Method": "GET",
+                    },
+                )
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(
+                    response.headers["access-control-allow-origin"],
+                    "http://127.0.0.1:5173",
+                )
+
+        asyncio.run(run())
+
     def _client(self):
         app = self._app_and_tmp()
         transport = httpx.ASGITransport(app=app)
