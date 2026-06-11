@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+node_modules/
+vendor/
+data/cache/
+data/runtime/
+reports/
+build/
+.git/
+

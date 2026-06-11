@@ -1,0 +1,19 @@
+[project]
+name = "trustfacechain"
+version = "0.1.0"
+description = "Privacy-preserving blockchain-backed face verification capstone."
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [
+  { name = "TrustFaceChain Team" }
+]
+
+[project.scripts]
+trustfacechain = "trustfacechain.cli:main"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+

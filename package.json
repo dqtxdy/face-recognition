@@ -1,0 +1,12 @@
+{
+  "name": "trustfacechain",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "compile:contracts": "node scripts/compile-contracts.js"
+  },
+  "devDependencies": {
+    "solc": "^0.8.35"
+  }
+}
