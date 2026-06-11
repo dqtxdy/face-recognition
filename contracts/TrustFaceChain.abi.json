@@ -1,0 +1,288 @@
+[
+  {
+    "inputs": [],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "subjectId",
+        "type": "bytes32"
+      }
+    ],
+    "name": "AlreadyEnrolled",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "EmptyValue",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "subjectId",
+        "type": "bytes32"
+      }
+    ],
+    "name": "NotEnrolled",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "subjectId",
+        "type": "bytes32"
+      }
+    ],
+    "name": "Revoked",
+    "type": "error"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "subjectId",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "bytes32",
+        "name": "templateCommitment",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "bytes32",
+        "name": "modelVersion",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "bytes32",
+        "name": "consentHash",
+        "type": "bytes32"
+      }
+    ],
+    "name": "IdentityEnrolled",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "subjectId",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "bytes32",
+        "name": "reasonHash",
+        "type": "bytes32"
+      }
+    ],
+    "name": "TemplateRevoked",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "subjectId",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "bytes32",
+        "name": "verificationHash",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "bytes32",
+        "name": "modelVersion",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "accepted",
+        "type": "bool"
+      }
+    ],
+    "name": "VerificationLogged",
+    "type": "event"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "subjectId",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "templateCommitment",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "consentHash",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "modelVersion",
+        "type": "bytes32"
+      }
+    ],
+    "name": "enrollIdentity",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "subjectId",
+        "type": "bytes32"
+      }
+    ],
+    "name": "getIdentity",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "bytes32",
+            "name": "templateCommitment",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "consentHash",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "modelVersion",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bool",
+            "name": "enrolled",
+            "type": "bool"
+          },
+          {
+            "internalType": "bool",
+            "name": "revoked",
+            "type": "bool"
+          },
+          {
+            "internalType": "uint256",
+            "name": "enrolledAt",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "revokedAt",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct TrustFaceChain.IdentityRecord",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "subjectId",
+        "type": "bytes32"
+      }
+    ],
+    "name": "isRevoked",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "subjectId",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "verificationHash",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "modelVersion",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "bool",
+        "name": "accepted",
+        "type": "bool"
+      }
+    ],
+    "name": "logVerification",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "owner",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "subjectId",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "reasonHash",
+        "type": "bytes32"
+      }
+    ],
+    "name": "revokeTemplate",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  }
+]
