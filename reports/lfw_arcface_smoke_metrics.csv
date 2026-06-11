@@ -1,0 +1,2 @@
+model,version,embedding_dim,pairs,best_threshold,accuracy,eer,eer_threshold,fit_seconds,embed_seconds,score_seconds
+arcface-insightface,buffalo_l,512,20,0.29665398597717285,1.0,0.0,0.29665398597717285,1.1559000995475799e-05,19.265243592002662,9.688699719845317e-05

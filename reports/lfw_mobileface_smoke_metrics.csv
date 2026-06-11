@@ -1,0 +1,2 @@
+model,version,embedding_dim,pairs,best_threshold,accuracy,eer,eer_threshold,fit_seconds,embed_seconds,score_seconds
+insightface-buffalo_s,buffalo_s,512,20,0.2547215558588505,1.0,0.0,0.2547215558588505,6.7400033003650606e-06,6.578667437999684,5.24869974469766e-05
