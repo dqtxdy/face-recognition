@@ -1,0 +1,10 @@
+{
+  "subjectId": "subject-demo-001",
+  "purpose": "Face verification capstone demo",
+  "scope": ["enrollment", "verification", "audit"],
+  "expiresAt": "2026-12-31T23:59:59Z",
+  "modelVersion": "arcface-r100-v1",
+  "templateStorage": "encrypted-off-chain",
+  "rawImageStorage": "none"
+}
+
