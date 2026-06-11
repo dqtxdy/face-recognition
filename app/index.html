@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>TrustFaceChain</title>
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <main class="shell">
+      <aside class="rail" aria-label="Primary">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span>TrustFaceChain</span>
+        </div>
+        <nav class="nav">
+          <a class="active" href="#enroll">Enroll</a>
+          <a href="#verify">Verify</a>
+          <a href="#audit">Audit</a>
+          <a href="#models">Models</a>
+          <a href="#evaluation">Evaluation</a>
+        </nav>
+      </aside>
+
+      <section class="workspace">
+        <header class="topbar">
+          <div>
+            <p class="kicker">Capstone Demo</p>
+            <h1>Private face verification with an auditable trust layer.</h1>
+          </div>
+          <div class="chain-status" role="status">
+            <span class="status-dot"></span>
+            Local chain ready
+          </div>
+        </header>
+
+        <section class="grid">
+          <article id="enroll" class="panel primary-panel">
+            <div class="panel-header">
+              <div>
+                <h2>Enroll Identity</h2>
+                <p>Create a protected template commitment without exposing biometrics on-chain.</p>
+              </div>
+              <span class="badge">ArcFace R100</span>
+            </div>
+            <div class="capture-box">
+              <div class="face-frame">
+                <span></span>
+              </div>
+              <div>
+                <p class="field-label">Consent</p>
+                <p class="value">Signed for enrollment, verification, and audit.</p>
+                <p class="field-label">Template storage</p>
+                <p class="value">Encrypted off-chain. Commitment only on-chain.</p>
+              </div>
+            </div>
+            <button id="enrollAction" class="button">Enroll identity</button>
+          </article>
+
+          <article id="verify" class="panel decision-panel">
+            <div class="panel-header compact">
+              <h2>Verification</h2>
+              <span id="decisionBadge" class="badge neutral">Waiting</span>
+            </div>
+            <div class="score">
+              <span>Similarity</span>
+              <strong id="scoreValue">0.00</strong>
+            </div>
+            <div class="meter" aria-label="Similarity score">
+              <span id="scoreMeter"></span>
+            </div>
+            <dl class="facts">
+              <div>
+                <dt>Threshold</dt>
+                <dd>0.62</dd>
+              </div>
+              <div>
+                <dt>Revoked</dt>
+                <dd>No</dd>
+              </div>
+              <div>
+                <dt>Model</dt>
+                <dd>arcface-r100-v1</dd>
+              </div>
+            </dl>
+            <button id="verifyAction" class="button secondary">Run verification</button>
+          </article>
+
+          <article id="models" class="panel model-panel">
+            <div class="panel-header compact">
+              <h2>Model Lineup</h2>
+            </div>
+            <div class="model-list">
+              <div><span>FaceNet</span><strong>Baseline</strong></div>
+              <div><span>ArcFace</span><strong>Main</strong></div>
+              <div><span>AdaFace</span><strong>Quality</strong></div>
+              <div><span>MobileFaceNet</span><strong>Edge</strong></div>
+            </div>
+          </article>
+
+          <article id="audit" class="panel audit-panel">
+            <div class="panel-header compact">
+              <h2>Audit Trail</h2>
+              <span class="badge">Events</span>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Event</th>
+                  <th>Subject</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="auditRows">
+                <tr>
+                  <td>SystemReady</td>
+                  <td>local</td>
+                  <td>Confirmed</td>
+                </tr>
+              </tbody>
+            </table>
+          </article>
+
+          <article id="evaluation" class="panel evaluation-panel">
+            <div class="panel-header compact">
+              <h2>Evaluation Targets</h2>
+            </div>
+            <div class="metric-grid">
+              <div><span>EER</span><strong>&lt; 2%</strong></div>
+              <div><span>p95 latency</span><strong>&lt; 250ms</strong></div>
+              <div><span>Datasets</span><strong>3+</strong></div>
+              <div><span>On-chain biometric data</span><strong>0</strong></div>
+            </div>
+          </article>
+        </section>
+      </section>
+    </main>
+    <script src="./app.js"></script>
+  </body>
+</html>
+
