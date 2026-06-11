@@ -1,0 +1,3 @@
+[submodule "awesome-design-systems"]
+	path = awesome-design-systems
+	url = https://github.com/alexpate/awesome-design-systems.git

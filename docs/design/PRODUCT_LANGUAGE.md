@@ -7,21 +7,38 @@ demo. Use the taste rules, not the page template assumptions.
 ## Design Read
 
 TrustFaceChain is a capstone-grade biometric security system for teachers,
-classmates, and technical evaluators. It should feel rigorous, calm, and
-credible. It should not feel like a crypto hype page or an AI image-generation
-landing page.
+classmates, and technical evaluators. It should feel like a mission-critical
+identity console: rigorous, calm, technical, and slightly uncommon. It should
+not feel like a crypto hype page, an AI image-generation landing page, or a
+default SaaS admin template.
 
 ## Dials
 
-- DESIGN_VARIANCE: 5
+- DESIGN_VARIANCE: 7
 - MOTION_INTENSITY: 3
-- VISUAL_DENSITY: 6
+- VISUAL_DENSITY: 7
 
 Rationale:
 
 - The system needs enough visual polish to impress.
-- It also needs enough density to show metrics, contracts, and audit events.
+- It also needs enough density to show metrics, contracts, audit events, and
+  privacy guarantees without extra explanation.
 - Motion should support comprehension, not perform for attention.
+
+## Design-System References
+
+Use the local `awesome-design-systems` catalogue as a reference map. The current
+pilot console should borrow from:
+
+- Carbon/Cloudscape/Elastic: dense operational hierarchy, metric blocks, and
+  clear data tables.
+- Blueprint/Astro UXDS: mission-console composition, dark technical surfaces,
+  and controlled status language.
+- Atlassian/GitLab/Primer: restrained interaction states and direct UI copy.
+
+Do not copy a system wholesale. TrustFaceChain needs its own recognizable
+language: dark identity stage, connected trust pipeline, cryptographic assurance
+rail, and concise operator controls.
 
 ## Visual Principles
 
@@ -55,12 +72,14 @@ Rationale:
 
 ## Layout Guidance
 
-Use an application layout:
+Use an application-console layout:
 
 - left navigation rail,
 - top status bar,
+- trust pipeline strip,
 - main work surface,
-- right-side context panel when needed.
+- biometric sample stage,
+- right-side assurance/model rail.
 
 Recommended routes:
 
@@ -73,16 +92,16 @@ Recommended routes:
 
 ## Component Language
 
-### Enrollment Card
+### Identity Console
 
-Use a single focused work panel:
+Use a focused work panel:
 
-- camera/image input,
-- detected face preview,
+- image/text input,
+- biometric sample stage,
 - consent summary,
 - selected model,
-- enroll action,
-- chain status.
+- enroll/verify/revoke actions,
+- latest assurance state.
 
 ### Verification Panel
 
@@ -169,4 +188,3 @@ Before presenting the UI:
 - Is every biometric privacy risk explicitly handled?
 - Are model metrics visible, not hidden in a notebook?
 - Does the UI look like a serious system rather than a template?
-
