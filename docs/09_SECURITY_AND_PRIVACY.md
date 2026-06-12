@@ -73,7 +73,11 @@ material.
 - Incident response playbook.
 - Secure key rotation.
 - Disaster recovery tests.
-- Formal model card and dataset card.
+
+Completed capstone documentation:
+
+- Formal model card.
+- Formal dataset card.
 
 ## Threat Model
 

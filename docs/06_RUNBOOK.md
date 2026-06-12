@@ -96,6 +96,43 @@ Current 120-pair results:
 This is defense evidence, not the final scientific endpoint. For the strongest
 claim, run the full 6000-pair protocol and add CALFW/CPLFW/XQLFW.
 
+## Explicit Pair CSV Benchmark
+
+Use this for CALFW, CPLFW, XQLFW, or a consent-pair protocol:
+
+```bash
+PYTHONPATH=src python3 -m trustfacechain.cli benchmark-pairs-csv data/hard_pairs.csv \
+  --models pixel,dct,lbp,eigenfaces \
+  --csv reports/hard_pairs_metrics.csv \
+  --json reports/hard_pairs_report.json
+```
+
+Required CSV columns:
+
+- `left_path`
+- `right_path`
+- `label`
+
+Optional CSV columns:
+
+- `left_identity`
+- `right_identity`
+
+Make shortcut:
+
+```bash
+make hard-benchmark PAIRS_CSV=data/hard_pairs.csv
+```
+
+Deep model example:
+
+```bash
+PYTHONPATH=vendor/face:src python3 -m trustfacechain.cli benchmark-pairs-csv data/hard_pairs.csv \
+  --models arcface,mobileface \
+  --csv reports/hard_pairs_deep_metrics.csv \
+  --json reports/hard_pairs_deep_report.json
+```
+
 ## Folder Benchmark
 
 Use this when the group has a local consent-based demo dataset:
@@ -230,6 +267,15 @@ Or pass it in the browser URL:
 ```text
 http://127.0.0.1:5173/?apiUrl=http://127.0.0.1:18080
 ```
+
+Use live-chain read mode after `make chain-live` or a known Anvil deployment:
+
+```text
+http://127.0.0.1:5173/?apiUrl=http://127.0.0.1:18080&rpcUrl=http://127.0.0.1:8545&contractAddress=0x5fbdb2315678afecb367f032d93f642f64180aa3
+```
+
+The chain panel calls `isRevoked(bytes32)` through JSON-RPC. It does not submit
+transactions or handle private keys in the browser.
 
 Build check:
 

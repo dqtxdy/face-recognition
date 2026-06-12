@@ -90,6 +90,8 @@ Pilot success metrics:
 - The API can be deployed without exposing model internals to client apps.
 - Passive image quality/PAD checks can be enforced for image enroll and verify
   requests.
+- Explicit pair CSV benchmarks support harder datasets and consent protocols.
+- The React console can read contract revocation state through JSON-RPC.
 
 ## Hard Product Truths
 
@@ -103,7 +105,7 @@ Pilot success metrics:
 
 1. Run full deep LFW plus CALFW/CPLFW/XQLFW benchmarks.
 2. Add trained liveness/PAD or active challenge checks.
-3. Wire the React console to live JSON-RPC contract events.
+3. Add browser-safe transaction flow or server-side chain relay.
 4. Add role-based API keys and tenant isolation.
 5. Add exportable audit reports.
 6. Add admin dashboard views for tenants, models, and thresholds.

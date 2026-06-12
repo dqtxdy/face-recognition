@@ -71,6 +71,16 @@ demo. This project aims higher:
 - [docs/10_PILOT_PITCH.md](docs/10_PILOT_PITCH.md): buyer-facing pilot pitch.
 - [docs/11_STRICT_PRODUCT_SCORECARD.md](docs/11_STRICT_PRODUCT_SCORECARD.md):
   manager-grade readiness gates and dataset standards.
+- [docs/12_DEFENSE_DECK.md](docs/12_DEFENSE_DECK.md): slide-by-slide
+  defense plan.
+- [docs/13_LIVE_DEMO_SCRIPT.md](docs/13_LIVE_DEMO_SCRIPT.md): timed live
+  demo script and fallbacks.
+- [docs/14_MODEL_CARD.md](docs/14_MODEL_CARD.md): model uses, evidence, and
+  limitations.
+- [docs/15_DATASET_CARD.md](docs/15_DATASET_CARD.md): dataset use, consent
+  plan, and hard-benchmark protocol.
+- [docs/16_DEFENSE_QA.md](docs/16_DEFENSE_QA.md): rehearsal answers for likely
+  defense questions.
 - [docs/design/PRODUCT_LANGUAGE.md](docs/design/PRODUCT_LANGUAGE.md): visual
   direction for a non-sloppy, trust-first demo experience.
 
@@ -99,6 +109,15 @@ Run the stronger sampled ArcFace defense benchmark:
 
 ```bash
 make deep-defense
+```
+
+Run a hard public or consent-pair benchmark from CSV:
+
+```bash
+PYTHONPATH=src python3 -m trustfacechain.cli benchmark-pairs-csv data/hard_pairs.csv \
+  --models pixel,dct,lbp,eigenfaces \
+  --csv reports/hard_pairs_metrics.csv \
+  --json reports/hard_pairs_report.json
 ```
 
 Run the local-chain proof after starting Anvil on `127.0.0.1:8545`:
@@ -170,6 +189,7 @@ quality/PAD gate.
 - React pilot console in `web/`.
 - Optional InsightFace deep smoke reports in `reports/lfw_deep_smoke_metrics.csv`.
 - Sampled ArcFace defense report in `reports/lfw_deep_defense_metrics.csv`.
+- Hard-pair CSV benchmark command for CALFW/CPLFW/XQLFW or consent data.
 - Full official LFW classical baseline in `reports/lfw_full_classical_metrics.csv`.
 - Local EVM report in `reports/local_chain_report.json` and
   `reports/local_chain_gas.csv`.

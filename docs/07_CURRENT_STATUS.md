@@ -8,7 +8,7 @@ Last updated: 2026-06-12
 
 - `trustfacechain.metrics`: FAR/FRR/EER-style verification metrics.
 - `trustfacechain.datasets`: synthetic data, folder datasets, LFW loader, and
-  official LFW pairs loader.
+  official LFW pairs loader, explicit pair CSV loader.
 - `trustfacechain.benchmark`: multi-model benchmark runner.
 - `trustfacechain.robustness`: corruption sensitivity suite.
 - `trustfacechain.templates`: first-pass protected-template commitments.
@@ -54,6 +54,8 @@ Working:
 - Local Anvil deployment proof.
 - Gas report export.
 - Unauthorized write attempt blocked on the live local EVM.
+- React console can read `isRevoked(bytes32)` from a configured JSON-RPC
+  endpoint.
 
 Not yet done:
 
@@ -69,6 +71,8 @@ Working:
 - Verification simulation.
 - Audit event table.
 - Template revocation.
+- Passive PAD gate controls.
+- Optional live-chain read panel.
 - Benchmark report display.
 - Robustness report display.
 
@@ -198,6 +202,17 @@ Manager interpretation: this is strong defense evidence beyond smoke, but it is
 still a sampled LFW run. The full 6000-pair deep run and harder datasets remain
 the scientific finish line.
 
+Explicit pair CSV benchmarks are now supported:
+
+```bash
+PYTHONPATH=src python3 -m trustfacechain.cli benchmark-pairs-csv data/hard_pairs.csv \
+  --models pixel,dct,lbp,eigenfaces \
+  --csv reports/hard_pairs_metrics.csv \
+  --json reports/hard_pairs_report.json
+```
+
+This is the adapter path for CALFW/CPLFW/XQLFW or a consent-based class protocol.
+
 The full official LFW protocol passed for the classical baseline stack:
 
 ```bash
@@ -278,6 +293,16 @@ Output:
 
 - `build/openapi/trustfacechain.openapi.json`
 
+## Defense Package
+
+Added:
+
+- `docs/12_DEFENSE_DECK.md`
+- `docs/13_LIVE_DEMO_SCRIPT.md`
+- `docs/14_MODEL_CARD.md`
+- `docs/15_DATASET_CARD.md`
+- `docs/16_DEFENSE_QA.md`
+
 ## Important Caveats
 
 - The current dashboard uses deterministic text embeddings as a stand-in for
@@ -299,8 +324,8 @@ Output:
 ## Next Technical Milestones
 
 1. Run full 6000-pair LFW deep benchmarks for Buffalo-S and Buffalo-L.
-2. Add CALFW/CPLFW/XQLFW support.
+2. Load CALFW/CPLFW/XQLFW pair CSVs and run `benchmark-pairs-csv`.
 3. Add tenant isolation and role-based API keys.
 4. Add a trained liveness/PAD model or active challenge.
-5. Wire the React console to live JSON-RPC contract events.
+5. Add browser-side transaction preparation or server-side chain relay.
 6. Add exportable pilot reports.

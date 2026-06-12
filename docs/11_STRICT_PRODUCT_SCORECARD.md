@@ -78,7 +78,7 @@ Rejected:
 | LFW classical baseline | Full official LFW 6000-pair protocol | Passed |
 | LFW deep defense sample | 120 balanced LFW pairs, Buffalo-S and Buffalo-L | Passed |
 | LFW deep full protocol | Full official LFW 6000-pair protocol | Not done |
-| Harder public tests | CALFW/CPLFW or XQLFW protocol | Not done |
+| Harder public tests | CALFW/CPLFW or XQLFW protocol | CSV adapter added, runs not done |
 | Consent demo set | 10-20 consenting users, 20-40 images each | Not done |
 | Robustness | brightness, blur, JPEG, occlusion, downscale | Demo path passed |
 | Latency | Total embedding time measured for deep sample | Partial |
@@ -111,8 +111,8 @@ Minimum final claim:
 | UI | React pilot console | Added |
 | Liveness | Passive image quality/PAD gate | Passed prototype gate |
 | Tenant safety | Tenant isolation and roles | Not done |
-| Blockchain | Local EVM deployment, operator auth, gas report | Passed |
-| Compliance | Dataset card, model card, privacy review | Not done |
+| Blockchain | Local EVM deployment, operator auth, gas report, JSON-RPC read | Passed |
+| Compliance | Dataset card, model card, privacy review | Cards added, privacy review pending |
 
 ## Current 20/10 Verdict
 
@@ -120,7 +120,7 @@ Capstone readiness: close to 20/10 if the defense is honest about scope.
 
 Product readiness: not sellable yet. The next blockers are tenant roles, full
 deep benchmarks, harder datasets, trained PAD, and live JSON-RPC dashboard
-integration.
+transaction integration.
 
 ## Final Defense Standard
 
