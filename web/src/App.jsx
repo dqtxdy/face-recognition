@@ -23,8 +23,7 @@ import { useEffect, useMemo, useState } from "react";
 const QUERY_API_URL = new URLSearchParams(window.location.search).get("apiUrl");
 const DEFAULT_API_URL =
   QUERY_API_URL ?? import.meta.env.VITE_TRUSTFACECHAIN_API_URL ?? "http://127.0.0.1:8080";
-const SAMPLE_IMAGE_BASE64 =
-  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
+const SAMPLE_IMAGE_BASE64 = createDemoImageBase64();
 
 const models = [
   { id: "demo-image-hash-v1", label: "Image Hash", status: "Local" },
@@ -34,9 +33,9 @@ const models = [
 ];
 
 const datasetRows = [
-  { name: "Smoke", scope: "20 LFW pairs", state: "Weak" },
-  { name: "Defense", scope: "Full LFW 6000", state: "Required" },
-  { name: "Target", scope: "LFW + CALFW/CPLFW + XQLFW", state: "Next" },
+  { name: "Classical", scope: "LFW 6000 pairs", state: "Done" },
+  { name: "Deep", scope: "ArcFace sample", state: "Done" },
+  { name: "Hard sets", scope: "CALFW / CPLFW / XQLFW", state: "Next" },
 ];
 
 const trustStages = [
@@ -63,6 +62,8 @@ function App() {
   const [biometricText, setBiometricText] = useState("pilot sample");
   const [imageBase64, setImageBase64] = useState(SAMPLE_IMAGE_BASE64);
   const [consentPurpose, setConsentPurpose] = useState("pilot access control");
+  const [requireLiveness, setRequireLiveness] = useState(false);
+  const [livenessReport, setLivenessReport] = useState(null);
   const [result, setResult] = useState(null);
   const [busyAction, setBusyAction] = useState("");
 
@@ -111,6 +112,7 @@ function App() {
         subject_id: subjectId,
         model_version: modelVersion,
         allow_reenroll: true,
+        require_liveness: mode === "image" && requireLiveness,
         consent: {
           purpose: consentPurpose,
           scope: ["enrollment", "verification", "audit"],
@@ -118,10 +120,11 @@ function App() {
         },
         ...payload,
       });
+      setLivenessReport(data.liveness ?? null);
       setResult({
         type: "success",
         title: "Enrolled",
-        detail: shortHash(data.templateCommitment),
+        detail: resultDetail(shortHash(data.templateCommitment), data.liveness),
       });
       await refreshState();
     } catch (error) {
@@ -137,12 +140,14 @@ function App() {
       const data = await api.post("/v1/verify", {
         subject_id: subjectId,
         threshold: Number(threshold),
+        require_liveness: mode === "image" && requireLiveness,
         ...payload,
       });
+      setLivenessReport(data.liveness ?? null);
       setResult({
         type: data.accepted ? "success" : "warn",
         title: data.accepted ? "Accepted" : "Rejected",
-        detail: `${data.score.toFixed(4)} / ${data.threshold}`,
+        detail: resultDetail(`${data.score.toFixed(4)} / ${data.threshold}`, data.liveness),
       });
       await refreshState();
     } catch (error) {
@@ -179,6 +184,7 @@ function App() {
     }
     const dataUrl = await fileToDataUrl(file);
     setImageBase64(dataUrl.split(",", 2)[1] ?? "");
+    setLivenessReport(null);
   }
 
   const activeModel = models.find((model) => model.id === modelVersion) ?? models[0];
@@ -189,6 +195,7 @@ function App() {
     metrics?.identities > 0
       ? Math.round((metrics.activeIdentities / metrics.identities) * 100)
       : 0;
+  const livenessState = livenessLabel(livenessReport);
 
   return (
     <main className="app-shell">
@@ -285,6 +292,11 @@ function App() {
                   <span>{subjectId}</span>
                   <strong>{activeModel.label}</strong>
                 </div>
+                <div className={`liveness-card liveness-${livenessState.tone}`}>
+                  <ShieldCheck size={16} />
+                  <span>PAD</span>
+                  <strong>{livenessState.label}</strong>
+                </div>
               </div>
 
               <div className="control-stack">
@@ -330,6 +342,17 @@ function App() {
                     <span>Text</span>
                   </button>
                 </div>
+
+                <label className={`toggle-row ${mode !== "image" ? "disabled" : ""}`}>
+                  <input
+                    type="checkbox"
+                    checked={requireLiveness}
+                    onChange={(event) => setRequireLiveness(event.target.checked)}
+                    disabled={mode !== "image"}
+                  />
+                  <span>PAD gate</span>
+                  <strong>{requireLiveness && mode === "image" ? "Enforce" : "Observe"}</strong>
+                </label>
 
                 {mode === "image" ? (
                   <div className="image-input">
@@ -405,6 +428,10 @@ function App() {
               <div>
                 <FileKey2 size={16} />
                 <span>No raw storage</span>
+              </div>
+              <div>
+                <ShieldCheck size={16} />
+                <span>PAD {livenessState.label}</span>
               </div>
               <div>
                 <Binary size={16} />
@@ -531,6 +558,25 @@ function createApiClient(apiUrl, apiKey) {
   };
 }
 
+function createDemoImageBase64() {
+  const canvas = document.createElement("canvas");
+  canvas.width = 128;
+  canvas.height = 128;
+  const context = canvas.getContext("2d");
+  const image = context.createImageData(128, 128);
+  for (let y = 0; y < 128; y += 1) {
+    for (let x = 0; x < 128; x += 1) {
+      const index = (y * 128 + x) * 4;
+      image.data[index] = 70 + ((x * 3 + y * 5) % 120);
+      image.data[index + 1] = 80 + ((x * 7 + y * 2) % 100);
+      image.data[index + 2] = 90 + ((x * 5 + y * 11) % 90);
+      image.data[index + 3] = 255;
+    }
+  }
+  context.putImageData(image, 0, 0);
+  return canvas.toDataURL("image/png").split(",", 2)[1] ?? "";
+}
+
 function usePersistentState(key, initialValue, preferInitialValue = false) {
   const [value, setValue] = useState(() =>
     preferInitialValue ? initialValue : localStorage.getItem(key) ?? initialValue,
@@ -559,6 +605,24 @@ function formatDate(value) {
     minute: "2-digit",
     second: "2-digit",
   }).format(new Date(value));
+}
+
+function resultDetail(primary, liveness) {
+  const label = livenessLabel(liveness);
+  if (label.label === "Idle") {
+    return primary;
+  }
+  return `${primary} | PAD ${label.label}`;
+}
+
+function livenessLabel(liveness) {
+  if (!liveness) {
+    return { label: "Idle", tone: "idle" };
+  }
+  if (liveness.passed) {
+    return { label: "Pass", tone: "pass" };
+  }
+  return { label: "Review", tone: "review" };
 }
 
 function shortHash(value) {

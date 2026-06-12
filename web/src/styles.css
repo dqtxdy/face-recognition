@@ -360,7 +360,7 @@ h2 {
 
 .sample-stage {
   display: grid;
-  grid-template-rows: auto minmax(210px, 1fr) auto;
+  grid-template-rows: auto minmax(210px, 1fr) auto auto;
   border: 1px solid #22302c;
   border-radius: var(--radius);
   background:
@@ -481,6 +481,34 @@ h2 {
   white-space: nowrap;
 }
 
+.liveness-card {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 8px;
+  align-items: center;
+  border-top: 1px solid rgba(126, 242, 215, 0.14);
+  padding: 10px 12px;
+  color: #9fb5af;
+  font-size: 0.78rem;
+  font-weight: 760;
+}
+
+.liveness-card svg {
+  color: #7ef2d7;
+}
+
+.liveness-card strong {
+  color: #dfece8;
+}
+
+.liveness-pass strong {
+  color: #7ef2d7;
+}
+
+.liveness-review strong {
+  color: #ffd48a;
+}
+
 .control-stack {
   min-width: 0;
 }
@@ -553,6 +581,36 @@ textarea:focus {
 .segmented button.selected {
   border-color: var(--line-strong);
   background: var(--surface);
+}
+
+.toggle-row {
+  grid-template-columns: auto 1fr auto;
+  gap: 10px;
+  align-items: center;
+  margin: 0 0 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-muted);
+  padding: 10px 12px;
+}
+
+.toggle-row input {
+  width: 17px;
+  height: 17px;
+  accent-color: var(--accent);
+}
+
+.toggle-row span {
+  color: var(--text);
+}
+
+.toggle-row strong {
+  color: var(--accent-strong);
+  font-size: 0.82rem;
+}
+
+.toggle-row.disabled {
+  opacity: 0.55;
 }
 
 .image-input,
