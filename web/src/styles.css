@@ -324,6 +324,10 @@ h2 {
   gap: 16px;
 }
 
+.layout-grid {
+  align-items: start;
+}
+
 .panel {
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -688,6 +692,25 @@ textarea:focus {
   background:
     linear-gradient(180deg, rgba(0, 124, 104, 0.05), transparent 170px),
     var(--surface);
+}
+
+.chain-form {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.58);
+  padding: 12px;
+}
+
+.chain-form input {
+  font-family:
+    ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    Consolas,
+    monospace;
+  font-size: 0.78rem;
 }
 
 .model-list {

@@ -21,9 +21,18 @@ import {
 import { useEffect, useMemo, useState } from "react";
 
 const QUERY_API_URL = new URLSearchParams(window.location.search).get("apiUrl");
+const QUERY_RPC_URL = new URLSearchParams(window.location.search).get("rpcUrl");
+const QUERY_CONTRACT_ADDRESS = new URLSearchParams(window.location.search).get("contractAddress");
 const DEFAULT_API_URL =
   QUERY_API_URL ?? import.meta.env.VITE_TRUSTFACECHAIN_API_URL ?? "http://127.0.0.1:8080";
+const DEFAULT_RPC_URL =
+  QUERY_RPC_URL ?? import.meta.env.VITE_TRUSTFACECHAIN_RPC_URL ?? "http://127.0.0.1:8545";
+const DEFAULT_CONTRACT_ADDRESS =
+  QUERY_CONTRACT_ADDRESS ??
+  import.meta.env.VITE_TRUSTFACECHAIN_CONTRACT_ADDRESS ??
+  "0x5fbdb2315678afecb367f032d93f642f64180aa3";
 const SAMPLE_IMAGE_BASE64 = createDemoImageBase64();
+const IS_REVOKED_SELECTOR = "0x4294857f";
 
 const models = [
   { id: "demo-image-hash-v1", label: "Image Hash", status: "Local" },
@@ -51,6 +60,18 @@ function App() {
     DEFAULT_API_URL,
     Boolean(QUERY_API_URL),
   );
+  const [rpcUrl, setRpcUrl] = usePersistentState(
+    "tfc-rpc-url",
+    DEFAULT_RPC_URL,
+    Boolean(QUERY_RPC_URL),
+  );
+  const [contractAddress, setContractAddress] = usePersistentState(
+    "tfc-contract-address",
+    DEFAULT_CONTRACT_ADDRESS,
+    Boolean(QUERY_CONTRACT_ADDRESS),
+  );
+  const [chainSubject, setChainSubject] = usePersistentState("tfc-chain-subject", "subject-demo-001");
+  const [chainState, setChainState] = useState({ status: "idle", detail: "Not checked" });
   const [apiKey, setApiKey] = usePersistentState("tfc-api-key", "");
   const [health, setHealth] = useState({ status: "unknown", detail: "Not checked" });
   const [metrics, setMetrics] = useState(null);
@@ -86,6 +107,37 @@ function App() {
       setHealth({ status: "online", detail: data.service });
     } catch (error) {
       setHealth({ status: "offline", detail: error.message });
+    }
+  }
+
+  async function checkChain() {
+    setBusyAction("chain");
+    try {
+      const subjectBytes = await toBytes32(chainSubject);
+      const data = `${IS_REVOKED_SELECTOR}${subjectBytes.slice(2)}`;
+      const response = await fetch(rpcUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "eth_call",
+          params: [{ to: contractAddress, data }, "latest"],
+        }),
+      });
+      const payload = await response.json();
+      if (!response.ok || payload.error) {
+        throw new Error(payload.error?.message ?? response.statusText);
+      }
+      const revoked = BigInt(payload.result || "0x0") !== 0n;
+      setChainState({
+        status: "online",
+        detail: revoked ? "Revoked" : "Active",
+      });
+    } catch (error) {
+      setChainState({ status: "offline", detail: error.message });
+    } finally {
+      setBusyAction("");
     }
   }
 
@@ -424,6 +476,24 @@ function App() {
               <Server size={18} />
               <span>Ping</span>
             </button>
+            <div className="chain-form">
+              <label>
+                <span>RPC URL</span>
+                <input value={rpcUrl} onChange={(event) => setRpcUrl(event.target.value)} />
+              </label>
+              <label>
+                <span>Contract</span>
+                <input value={contractAddress} onChange={(event) => setContractAddress(event.target.value)} />
+              </label>
+              <label>
+                <span>Chain subject</span>
+                <input value={chainSubject} onChange={(event) => setChainSubject(event.target.value)} />
+              </label>
+              <button className="command" onClick={checkChain} disabled={busyAction === "chain"}>
+                <Network size={18} />
+                <span>Check chain</span>
+              </button>
+            </div>
             <div className="assurance-stack">
               <div>
                 <FileKey2 size={16} />
@@ -440,6 +510,10 @@ function App() {
               <div>
                 <CircuitBoard size={16} />
                 <span>{latestEvent?.eventType ?? "No event"}</span>
+              </div>
+              <div>
+                <Network size={16} />
+                <span>Chain {chainState.detail}</span>
               </div>
             </div>
             <div className="model-list">
@@ -623,6 +697,18 @@ function livenessLabel(liveness) {
     return { label: "Pass", tone: "pass" };
   }
   return { label: "Review", tone: "review" };
+}
+
+async function toBytes32(value) {
+  const trimmed = value.trim();
+  if (/^0x[0-9a-fA-F]{64}$/.test(trimmed)) {
+    return trimmed.toLowerCase();
+  }
+  const bytes = new TextEncoder().encode(trimmed);
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return `0x${Array.from(new Uint8Array(digest))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("")}`;
 }
 
 function shortHash(value) {
