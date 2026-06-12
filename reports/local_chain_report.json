@@ -1,0 +1,54 @@
+{
+  "generatedAt": "2026-06-12T12:46:14.909Z",
+  "rpcUrl": "http://127.0.0.1:8545",
+  "contractAddress": "0x5fbdb2315678afecb367f032d93f642f64180aa3",
+  "owner": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+  "operator": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+  "attacker": "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
+  "unauthorizedWriteBlocked": true,
+  "revoked": true,
+  "subjectId": "0x6c5a89e55445a1462e930f3b2b2ee7a6019abd97766a6c3436bc0fd0d8292ee2",
+  "totalGas": 863529,
+  "transactions": [
+    {
+      "action": "deploy",
+      "from": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+      "transactionHash": "0x258146c19c63ef6bfe422aced84a1d1c1c0911eaf9d39073e044e697fd5ca91b",
+      "gasUsed": 582692,
+      "blockNumber": 1,
+      "status": "0x1"
+    },
+    {
+      "action": "setOperator",
+      "from": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+      "transactionHash": "0x0d8c11125e8ed54377121c79c09bbbab9fd8b5036e416563732af63583177340",
+      "gasUsed": 45748,
+      "blockNumber": 2,
+      "status": "0x1"
+    },
+    {
+      "action": "enrollIdentity",
+      "from": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+      "transactionHash": "0x7845f0c251c88df6ba5457fdef2640d2fb1f99702e7cccc79bd488f59031bb29",
+      "gasUsed": 141120,
+      "blockNumber": 3,
+      "status": "0x1"
+    },
+    {
+      "action": "logVerification",
+      "from": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+      "transactionHash": "0xfb03995dc0a341f57ddd027a0c5ae7f9ad9063e01a72664bd5f707bd4ede9486",
+      "gasUsed": 40381,
+      "blockNumber": 4,
+      "status": "0x1"
+    },
+    {
+      "action": "revokeTemplate",
+      "from": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+      "transactionHash": "0x7012c01f3ea3b507c2da7e5036f87501693d34942a305b65d1d2c5ff23267719",
+      "gasUsed": 53588,
+      "blockNumber": 5,
+      "status": "0x1"
+    }
+  ]
+}

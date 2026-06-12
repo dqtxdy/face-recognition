@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "compile:contracts": "node scripts/compile-contracts.js",
+    "chain:local": "node scripts/deploy-local-chain.js",
     "web": "vite --host 0.0.0.0 --port 5173",
     "build:web": "vite build",
     "preview:web": "vite preview --host 0.0.0.0 --port 4173"

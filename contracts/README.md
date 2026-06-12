@@ -24,10 +24,13 @@ It does not store:
 - [TrustFaceChain.sol](TrustFaceChain.sol)
 - [TrustFaceChain.abi.json](TrustFaceChain.abi.json)
 
+The contract now uses an owner/operator model. The deployer is the owner, the
+owner can approve operators, and only the owner or approved operators can
+enroll identities, log verifications, or revoke templates.
+
 ## Local Simulator
 
-Until Hardhat or Foundry is installed, the Python simulator mirrors the contract
-state transitions:
+The Python simulator mirrors the contract state transitions:
 
 ```bash
 make chain-demo
@@ -41,6 +44,28 @@ This demonstrates:
 4. verification blocked after revocation.
 
 ## Deployment Options
+
+### Local Anvil route
+
+Start Anvil:
+
+```bash
+/home/respectthanh/.foundry/bin/anvil --host 0.0.0.0 --port 8545
+```
+
+Then run:
+
+```bash
+make chain-live
+```
+
+Outputs:
+
+- `reports/local_chain_report.json`
+- `reports/local_chain_gas.csv`
+
+The script deploys the contract, approves an operator, proves an unauthorized
+write is rejected, runs enroll/verify/revoke, and records gas usage.
 
 ### Fast classroom route
 
@@ -56,10 +81,7 @@ Use Remix:
 
 Use Hardhat or Foundry later for:
 
-- local EVM deployment,
 - Solidity unit tests,
-- gas reports,
 - app integration through JSON-RPC.
 
 The current ABI is included so the app can be wired before a compiler is added.
-
