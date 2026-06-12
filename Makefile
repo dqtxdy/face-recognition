@@ -1,7 +1,7 @@
 API_HOST ?= 127.0.0.1
 API_PORT ?= 8080
 
-.PHONY: test smoke benchmark-demo chain-demo robustness-demo deep-smoke deep-defense contracts-compile chain-live api api-openapi web build-web demo-app check
+.PHONY: test smoke benchmark-demo chain-demo robustness-demo deep-smoke deep-defense hard-benchmark contracts-compile chain-live api api-openapi web build-web demo-app check
 
 test:
 	PYTHONPATH=src python3 -m unittest discover -s tests
@@ -23,6 +23,10 @@ deep-smoke:
 
 deep-defense:
 	PYTHONPATH=vendor/face:src python3 -m trustfacechain.cli benchmark-lfw-pairs --max-pairs $${DEEP_PAIRS:-120} --models arcface,mobileface --csv reports/lfw_deep_defense_metrics.csv --json reports/lfw_deep_defense_report.json
+
+hard-benchmark:
+	@test -n "$(PAIRS_CSV)" || (echo "Set PAIRS_CSV=path/to/pairs.csv" && exit 2)
+	PYTHONPATH=$${PYTHONPATH:-src} python3 -m trustfacechain.cli benchmark-pairs-csv "$(PAIRS_CSV)" --models $${MODELS:-pixel,dct} --csv reports/hard_pairs_metrics.csv --json reports/hard_pairs_report.json
 
 contracts-compile:
 	npm run compile:contracts

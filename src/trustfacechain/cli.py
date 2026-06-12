@@ -18,6 +18,7 @@ from trustfacechain.datasets import (
     load_folder_dataset,
     load_lfw_official_pairs,
     load_lfw_people_dataset,
+    load_pairs_csv,
     make_synthetic_face_dataset,
 )
 from trustfacechain.metrics import evaluate_scores
@@ -159,6 +160,14 @@ def _cmd_benchmark_lfw_pairs(args: argparse.Namespace) -> int:
         data_home=args.data_home,
         balanced_subset=not args.unbalanced,
     )
+    results = [benchmark_embedder(embedder, pairs) for embedder in _selected_embedders(args.models)]
+    _write_benchmark_outputs(args, results)
+    _print_benchmark_results(results)
+    return 0
+
+
+def _cmd_benchmark_pairs_csv(args: argparse.Namespace) -> int:
+    pairs = load_pairs_csv(args.csv_path)
     results = [benchmark_embedder(embedder, pairs) for embedder in _selected_embedders(args.models)]
     _write_benchmark_outputs(args, results)
     _print_benchmark_results(results)
@@ -313,6 +322,16 @@ def build_parser() -> argparse.ArgumentParser:
     lfw_pairs.add_argument("--csv")
     lfw_pairs.add_argument("--json")
     lfw_pairs.set_defaults(func=_cmd_benchmark_lfw_pairs)
+
+    pairs_csv = subparsers.add_parser(
+        "benchmark-pairs-csv",
+        help="Benchmark recognizers on an explicit left_path,right_path,label CSV.",
+    )
+    pairs_csv.add_argument("csv_path")
+    pairs_csv.add_argument("--models", help="Comma list: pixel,dct,lbp,eigenfaces")
+    pairs_csv.add_argument("--csv")
+    pairs_csv.add_argument("--json")
+    pairs_csv.set_defaults(func=_cmd_benchmark_pairs_csv)
 
     robust = subparsers.add_parser(
         "robustness-demo",
