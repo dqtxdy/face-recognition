@@ -23,6 +23,17 @@
   {
     "inputs": [
       {
+        "internalType": "address",
+        "name": "caller",
+        "type": "address"
+      }
+    ],
+    "name": "NotAuthorized",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "bytes32",
         "name": "subjectId",
         "type": "bytes32"
@@ -71,6 +82,25 @@
       }
     ],
     "name": "IdentityEnrolled",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "operator",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "approved",
+        "type": "bool"
+      }
+    ],
+    "name": "OperatorUpdated",
     "type": "event"
   },
   {
@@ -255,6 +285,25 @@
     "type": "function"
   },
   {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "name": "operators",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [],
     "name": "owner",
     "outputs": [
@@ -281,6 +330,24 @@
       }
     ],
     "name": "revokeTemplate",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "operator",
+        "type": "address"
+      },
+      {
+        "internalType": "bool",
+        "name": "approved",
+        "type": "bool"
+      }
+    ],
+    "name": "setOperator",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"

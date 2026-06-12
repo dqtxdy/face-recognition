@@ -30,6 +30,10 @@ class EmptyValue(ContractError):
     pass
 
 
+class NotAuthorized(ContractError):
+    pass
+
+
 @dataclass
 class IdentityRecord:
     template_commitment: str
@@ -50,18 +54,44 @@ class ChainEvent:
 
 
 class TrustFaceChainSimulator:
-    def __init__(self):
+    def __init__(self, *, owner: str = "owner"):
+        if not owner:
+            raise EmptyValue("owner is required")
+        self.owner = owner
+        self.operators: dict[str, bool] = {owner: True}
         self.identities: dict[str, IdentityRecord] = {}
         self.events: list[ChainEvent] = []
+
+    def set_operator(
+        self,
+        *,
+        caller: str = "owner",
+        operator: str,
+        approved: bool,
+    ) -> None:
+        if caller != self.owner:
+            raise NotAuthorized(caller)
+        if not operator:
+            raise EmptyValue("operator is required")
+        self.operators[operator] = approved
+        self._event(
+            "OperatorUpdated",
+            operator,
+            {
+                "approved": approved,
+            },
+        )
 
     def enroll_identity(
         self,
         *,
+        caller: str = "owner",
         subject_id: str,
         template_commitment: str,
         consent_hash: str,
         model_version: str,
     ) -> None:
+        self._require_operator(caller)
         if not subject_id or not template_commitment:
             raise EmptyValue("subject_id and template_commitment are required")
         existing = self.identities.get(subject_id)
@@ -91,11 +121,13 @@ class TrustFaceChainSimulator:
     def log_verification(
         self,
         *,
+        caller: str = "owner",
         subject_id: str,
         verification_hash: str,
         model_version: str,
         accepted: bool,
     ) -> None:
+        self._require_operator(caller)
         record = self.identities.get(subject_id)
         if not record or not record.enrolled:
             raise NotEnrolled(subject_id)
@@ -113,7 +145,14 @@ class TrustFaceChainSimulator:
             },
         )
 
-    def revoke_template(self, *, subject_id: str, reason_hash: str) -> None:
+    def revoke_template(
+        self,
+        *,
+        caller: str = "owner",
+        subject_id: str,
+        reason_hash: str,
+    ) -> None:
+        self._require_operator(caller)
         record = self.identities.get(subject_id)
         if not record or not record.enrolled:
             raise NotEnrolled(subject_id)
@@ -133,6 +172,10 @@ class TrustFaceChainSimulator:
         record = self.identities.get(subject_id)
         return bool(record and record.revoked)
 
+    def _require_operator(self, caller: str) -> None:
+        if caller != self.owner and not self.operators.get(caller, False):
+            raise NotAuthorized(caller)
+
     def _event(self, event_type: str, subject_id: str, payload: dict[str, object]) -> None:
         self.events.append(
             ChainEvent(
@@ -146,4 +189,3 @@ class TrustFaceChainSimulator:
 
 def _now() -> int:
     return int(time())
-

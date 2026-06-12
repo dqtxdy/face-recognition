@@ -13,6 +13,7 @@ contract TrustFaceChain {
     }
 
     address public immutable owner;
+    mapping(address => bool) public operators;
     mapping(bytes32 => IdentityRecord) private identities;
 
     event IdentityEnrolled(
@@ -30,14 +31,40 @@ contract TrustFaceChain {
     );
 
     event TemplateRevoked(bytes32 indexed subjectId, bytes32 reasonHash);
+    event OperatorUpdated(address indexed operator, bool approved);
 
     error AlreadyEnrolled(bytes32 subjectId);
     error NotEnrolled(bytes32 subjectId);
     error Revoked(bytes32 subjectId);
     error EmptyValue();
+    error NotAuthorized(address caller);
+
+    modifier onlyOwner() {
+        if (msg.sender != owner) {
+            revert NotAuthorized(msg.sender);
+        }
+        _;
+    }
+
+    modifier onlyOperator() {
+        if (msg.sender != owner && !operators[msg.sender]) {
+            revert NotAuthorized(msg.sender);
+        }
+        _;
+    }
 
     constructor() {
         owner = msg.sender;
+        operators[msg.sender] = true;
+        emit OperatorUpdated(msg.sender, true);
+    }
+
+    function setOperator(address operator, bool approved) external onlyOwner {
+        if (operator == address(0)) {
+            revert EmptyValue();
+        }
+        operators[operator] = approved;
+        emit OperatorUpdated(operator, approved);
     }
 
     function enrollIdentity(
@@ -45,7 +72,7 @@ contract TrustFaceChain {
         bytes32 templateCommitment,
         bytes32 consentHash,
         bytes32 modelVersion
-    ) external {
+    ) external onlyOperator {
         if (subjectId == bytes32(0) || templateCommitment == bytes32(0)) {
             revert EmptyValue();
         }
@@ -76,7 +103,7 @@ contract TrustFaceChain {
         bytes32 verificationHash,
         bytes32 modelVersion,
         bool accepted
-    ) external {
+    ) external onlyOperator {
         IdentityRecord memory record = identities[subjectId];
         if (!record.enrolled) {
             revert NotEnrolled(subjectId);
@@ -96,7 +123,7 @@ contract TrustFaceChain {
         );
     }
 
-    function revokeTemplate(bytes32 subjectId, bytes32 reasonHash) external {
+    function revokeTemplate(bytes32 subjectId, bytes32 reasonHash) external onlyOperator {
         IdentityRecord storage record = identities[subjectId];
         if (!record.enrolled) {
             revert NotEnrolled(subjectId);
@@ -121,4 +148,3 @@ contract TrustFaceChain {
         return identities[subjectId];
     }
 }
-

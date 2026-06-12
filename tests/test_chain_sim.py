@@ -1,6 +1,11 @@
 import unittest
 
-from trustfacechain.chain_sim import AlreadyEnrolled, Revoked, TrustFaceChainSimulator
+from trustfacechain.chain_sim import (
+    AlreadyEnrolled,
+    NotAuthorized,
+    Revoked,
+    TrustFaceChainSimulator,
+)
 
 
 class ChainSimulatorTest(unittest.TestCase):
@@ -46,7 +51,32 @@ class ChainSimulatorTest(unittest.TestCase):
         with self.assertRaises(AlreadyEnrolled):
             chain.enroll_identity(**kwargs)
 
+    def test_only_owner_can_delegate_operator(self):
+        chain = TrustFaceChainSimulator(owner="root")
+        with self.assertRaises(NotAuthorized):
+            chain.set_operator(caller="analyst", operator="desk-1", approved=True)
+
+        chain.set_operator(caller="root", operator="desk-1", approved=True)
+        chain.enroll_identity(
+            caller="desk-1",
+            subject_id="subject",
+            template_commitment="template",
+            consent_hash="consent",
+            model_version="arcface",
+        )
+        self.assertIn("subject", chain.identities)
+
+    def test_unauthorized_writer_cannot_mutate_chain(self):
+        chain = TrustFaceChainSimulator(owner="root")
+        with self.assertRaises(NotAuthorized):
+            chain.enroll_identity(
+                caller="attacker",
+                subject_id="subject",
+                template_commitment="template",
+                consent_hash="consent",
+                model_version="arcface",
+            )
+
 
 if __name__ == "__main__":
     unittest.main()
-
