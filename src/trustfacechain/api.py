@@ -16,6 +16,7 @@ from trustfacechain.product_service import (
     IdentityNotFound,
     IdentityRevoked,
     InvalidBiometricInput,
+    LivenessCheckFailed,
     TrustFaceProductService,
     UnsupportedModelVersion,
     build_product_service,
@@ -42,10 +43,12 @@ class EnrollRequest(BiometricRequest):
     model_version: str = "demo-hash-v1"
     consent: dict[str, Any] = Field(default_factory=dict)
     allow_reenroll: bool = False
+    require_liveness: bool = False
 
 
 class VerifyRequest(BiometricRequest):
     threshold: float = Field(default=0.62, ge=-1.0, le=1.0)
+    require_liveness: bool = False
 
 
 class RevokeRequest(BaseModel):
@@ -134,9 +137,12 @@ def create_app(
                 model_version=request.model_version,
                 consent=request.consent,
                 allow_reenroll=request.allow_reenroll,
+                require_liveness=request.require_liveness,
             )
         except IdentityAlreadyActive as error:
             raise HTTPException(status_code=409, detail="identity already active") from error
+        except LivenessCheckFailed as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
         except (InvalidBiometricInput, UnsupportedModelVersion) as error:
             raise HTTPException(status_code=400, detail=str(error)) from error
         return {
@@ -145,6 +151,7 @@ def create_app(
             "templateCommitment": result.template_commitment,
             "consentHash": result.consent_hash,
             "eventHash": result.event_hash,
+            "liveness": result.liveness,
         }
 
     @app.post("/v1/verify")
@@ -158,11 +165,14 @@ def create_app(
                 biometric_input=request.biometric_input,
                 image_base64=request.image_base64,
                 threshold=request.threshold,
+                require_liveness=request.require_liveness,
             )
         except IdentityNotFound as error:
             raise HTTPException(status_code=404, detail="identity not found") from error
         except IdentityRevoked as error:
             raise HTTPException(status_code=423, detail="identity revoked") from error
+        except LivenessCheckFailed as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
         except (InvalidBiometricInput, UnsupportedModelVersion) as error:
             raise HTTPException(status_code=400, detail=str(error)) from error
         return {
@@ -172,6 +182,7 @@ def create_app(
             "threshold": result.threshold,
             "accepted": result.accepted,
             "verificationHash": result.verification_hash,
+            "liveness": result.liveness,
         }
 
     @app.post("/v1/revoke")

@@ -110,6 +110,24 @@ class ApiTest(unittest.TestCase):
 
         asyncio.run(run())
 
+    def test_liveness_gate_api_rejects_low_quality_image(self):
+        async def run():
+            async with self._client() as client:
+                response = await client.post(
+                    "/v1/enroll",
+                    json={
+                        "subject_id": "subject-image",
+                        "image_base64": _tiny_png_base64(),
+                        "model_version": "demo-image-hash-v1",
+                        "consent": {"purpose": "image unit test"},
+                        "require_liveness": True,
+                    },
+                )
+                self.assertEqual(response.status_code, 422)
+                self.assertIn("passive liveness gate failed", response.json()["detail"])
+
+        asyncio.run(run())
+
     def test_rejects_ambiguous_biometric_payload_api(self):
         async def run():
             async with self._client() as client:

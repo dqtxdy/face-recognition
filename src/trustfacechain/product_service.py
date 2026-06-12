@@ -14,6 +14,7 @@ import os
 from cryptography.fernet import Fernet
 
 from trustfacechain.crypto import canonical_json_hash, sha256_hex
+from trustfacechain.liveness import analyze_passive_liveness
 from trustfacechain.models.hash_embedder import DeterministicHashEmbedder
 from trustfacechain.store import ProductStore, StoredEvent, StoredIdentity
 from trustfacechain.templates import TemplateProtector
@@ -43,6 +44,10 @@ class UnsupportedModelVersion(ProductServiceError):
     pass
 
 
+class LivenessCheckFailed(ProductServiceError):
+    pass
+
+
 @dataclass(frozen=True)
 class BiometricSample:
     kind: str
@@ -56,6 +61,7 @@ class EnrollmentResult:
     template_commitment: str
     consent_hash: str
     event_hash: str
+    liveness: dict[str, Any] | None = None
 
 
 @dataclass(frozen=True)
@@ -66,6 +72,7 @@ class VerificationResult:
     threshold: float
     accepted: bool
     verification_hash: str
+    liveness: dict[str, Any] | None = None
 
 
 @dataclass(frozen=True)
@@ -97,6 +104,7 @@ class TrustFaceProductService:
         model_version: str,
         consent: dict[str, Any],
         allow_reenroll: bool = False,
+        require_liveness: bool = False,
     ) -> EnrollmentResult:
         existing = self.store.get_identity(subject_id)
         if existing and not existing.revoked and not allow_reenroll:
@@ -106,6 +114,7 @@ class TrustFaceProductService:
             biometric_input=biometric_input,
             image_base64=image_base64,
         )
+        liveness = self._passive_liveness(sample, require_liveness=require_liveness)
         embedding = self._embed(model_version, sample)
         protected = self.protector.protect(
             subject_id=subject_id,
@@ -119,6 +128,7 @@ class TrustFaceProductService:
             "biometricPayload": sample.kind,
             "rawImageStorage": "none",
             "templateStorage": "encrypted-local",
+            "passiveLiveness": _liveness_policy(liveness, require_liveness),
         }
         consent_hash = canonical_json_hash(consent_payload)
         encrypted_embedding = self.fernet.encrypt(_embedding_to_bytes(embedding))
@@ -149,6 +159,7 @@ class TrustFaceProductService:
                 "templateCommitment": identity.template_commitment,
                 "consentHash": identity.consent_hash,
                 "modelVersion": identity.model_version,
+                "livenessVerdict": _liveness_verdict(liveness),
             },
         )
         self.store.add_event(
@@ -159,6 +170,7 @@ class TrustFaceProductService:
                 "consentHash": identity.consent_hash,
                 "modelVersion": identity.model_version,
                 "eventHash": event_hash,
+                "liveness": liveness,
             },
         )
         return EnrollmentResult(
@@ -167,6 +179,7 @@ class TrustFaceProductService:
             template_commitment=identity.template_commitment,
             consent_hash=identity.consent_hash,
             event_hash=event_hash,
+            liveness=liveness,
         )
 
     def verify(
@@ -176,6 +189,7 @@ class TrustFaceProductService:
         biometric_input: str | None = None,
         image_base64: str | None = None,
         threshold: float,
+        require_liveness: bool = False,
     ) -> VerificationResult:
         identity = self._require_active_identity(subject_id)
         reference_embedding = _embedding_from_bytes(
@@ -185,6 +199,7 @@ class TrustFaceProductService:
             biometric_input=biometric_input,
             image_base64=image_base64,
         )
+        liveness = self._passive_liveness(sample, require_liveness=require_liveness)
         probe_embedding = self._embed(identity.model_version, sample)
         score = _dot(reference_embedding, probe_embedding)
         accepted = score >= threshold
@@ -196,6 +211,7 @@ class TrustFaceProductService:
                 "accepted": accepted,
                 "threshold": round(threshold, 6),
                 "scoreBucket": _score_bucket(score),
+                "livenessVerdict": _liveness_verdict(liveness),
             },
         )
         self.store.add_event(
@@ -207,6 +223,7 @@ class TrustFaceProductService:
                 "accepted": accepted,
                 "threshold": threshold,
                 "scoreBucket": _score_bucket(score),
+                "liveness": liveness,
             },
         )
         return VerificationResult(
@@ -216,6 +233,7 @@ class TrustFaceProductService:
             threshold=threshold,
             accepted=accepted,
             verification_hash=verification_hash,
+            liveness=liveness,
         )
 
     def revoke(self, *, subject_id: str, reason: str) -> RevocationResult:
@@ -271,6 +289,31 @@ class TrustFaceProductService:
         if sample.kind == "text":
             return _embed_text(model_version, sample.data.decode("utf-8"))
         return self._embed_image(model_version, sample.data)
+
+    def _passive_liveness(
+        self,
+        sample: BiometricSample,
+        *,
+        require_liveness: bool,
+    ) -> dict[str, Any] | None:
+        if sample.kind != "image_base64":
+            if require_liveness:
+                raise InvalidBiometricInput("passive liveness requires image_base64 input")
+            return None
+
+        try:
+            report = analyze_passive_liveness(sample.data).to_dict()
+        except OSError as error:
+            raise InvalidBiometricInput("image_base64 does not decode to an image") from error
+        if require_liveness and not report["passed"]:
+            failed = [
+                check["name"]
+                for check in report["checks"]
+                if isinstance(check, dict) and not check.get("passed")
+            ]
+            detail = ", ".join(failed) or "capture quality"
+            raise LivenessCheckFailed(f"passive liveness gate failed: {detail}")
+        return report
 
     def _embed_image(self, model_version: str, image_bytes: bytes) -> list[float]:
         if model_version in {"demo-hash-v1", "demo-image-hash-v1"}:
@@ -438,3 +481,21 @@ def _score_bucket(score: float) -> str:
     if score >= 0.0:
         return "low"
     return "negative"
+
+
+def _liveness_policy(
+    liveness: dict[str, Any] | None,
+    require_liveness: bool,
+) -> dict[str, object]:
+    return {
+        "type": "passive-quality-v1" if liveness else "none",
+        "required": require_liveness,
+        "verdict": _liveness_verdict(liveness),
+    }
+
+
+def _liveness_verdict(liveness: dict[str, Any] | None) -> str:
+    if not liveness:
+        return "not-applicable"
+    verdict = liveness.get("verdict")
+    return str(verdict) if verdict else "unknown"

@@ -11,6 +11,7 @@ from trustfacechain.product_service import (
     IdentityAlreadyActive,
     IdentityRevoked,
     InvalidBiometricInput,
+    LivenessCheckFailed,
     TrustFaceProductService,
 )
 from trustfacechain.store import ProductStore
@@ -84,6 +85,29 @@ class ProductServiceTest(unittest.TestCase):
         self.assertIsNotNone(identity)
         self.assertNotIn(image_payload.encode("utf-8"), identity.encrypted_embedding)
 
+    def test_passive_liveness_gate_rejects_low_quality_capture(self):
+        service = self._service()
+        with self.assertRaises(LivenessCheckFailed):
+            service.enroll(
+                subject_id="subject-image",
+                image_base64=_tiny_png_base64(),
+                model_version="demo-image-hash-v1",
+                consent={"purpose": "unit test"},
+                require_liveness=True,
+            )
+
+    def test_passive_liveness_gate_allows_textured_capture(self):
+        service = self._service()
+        enrollment = service.enroll(
+            subject_id="subject-image",
+            image_base64=_textured_png_base64(),
+            model_version="demo-image-hash-v1",
+            consent={"purpose": "unit test"},
+            require_liveness=True,
+        )
+        self.assertIsNotNone(enrollment.liveness)
+        self.assertTrue(enrollment.liveness["passed"])
+
     def test_rejects_ambiguous_biometric_payload(self):
         service = self._service()
         with self.assertRaises(InvalidBiometricInput):
@@ -98,6 +122,23 @@ class ProductServiceTest(unittest.TestCase):
 
 def _tiny_png_base64() -> str:
     image = Image.new("RGB", (16, 16), color=(120, 80, 40))
+    buffer = io.BytesIO()
+    image.save(buffer, format="PNG")
+    return base64.b64encode(buffer.getvalue()).decode("ascii")
+
+
+def _textured_png_base64() -> str:
+    image = Image.new("RGB", (128, 128))
+    for y in range(128):
+        for x in range(128):
+            image.putpixel(
+                (x, y),
+                (
+                    70 + ((x * 3 + y * 5) % 120),
+                    80 + ((x * 7 + y * 2) % 100),
+                    90 + ((x * 5 + y * 11) % 90),
+                ),
+            )
     buffer = io.BytesIO()
     image.save(buffer, format="PNG")
     return base64.b64encode(buffer.getvalue()).decode("ascii")
