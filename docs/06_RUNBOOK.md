@@ -69,6 +69,33 @@ This runs the full official 6000-pair LFW protocol for the lightweight baseline
 stack. The current result confirms that classical baselines are weak and should
 be presented as justification for deep architectures, not as the final model.
 
+## LFW Deep Defense Sample
+
+```bash
+make deep-defense
+```
+
+Default size is 120 balanced official LFW pairs. Override it with:
+
+```bash
+DEEP_PAIRS=300 make deep-defense
+```
+
+Outputs:
+
+- `reports/lfw_deep_defense_metrics.csv`
+- `reports/lfw_deep_defense_report.json`
+
+Current 120-pair results:
+
+- `insightface-buffalo_l`: accuracy `1.0000`, EER `0.0000`,
+  embedding time `128.60s`.
+- `insightface-buffalo_s`: accuracy `1.0000`, EER `0.0000`,
+  embedding time `57.36s`.
+
+This is defense evidence, not the final scientific endpoint. For the strongest
+claim, run the full 6000-pair protocol and add CALFW/CPLFW/XQLFW.
+
 ## Folder Benchmark
 
 Use this when the group has a local consent-based demo dataset:
@@ -116,6 +143,35 @@ Output:
 
 - `contracts/TrustFaceChain.abi.json`
 - `build/contracts/TrustFaceChain.json`
+
+## Local EVM Deployment And Gas
+
+Start Anvil:
+
+```bash
+/home/respectthanh/.foundry/bin/anvil --host 0.0.0.0 --port 8545
+```
+
+In another shell:
+
+```bash
+make chain-live
+```
+
+Outputs:
+
+- `reports/local_chain_report.json`
+- `reports/local_chain_gas.csv`
+
+The live proof deploys the contract, delegates an operator, verifies that an
+unauthorized writer is blocked, enrolls, logs verification, revokes, and reads
+revocation state. Current gas values are:
+
+- deploy: `582692`
+- set operator: `45748`
+- enroll identity: `141120`
+- log verification: `40381`
+- revoke template: `53588`
 
 Note: `npm audit` currently reports `tmp` vulnerabilities through `solc`.
 The suggested audit fix downgrades `solc` to an old major version, so do not
@@ -247,6 +303,10 @@ Use `demo-image-hash-v1` for dependency-free image API tests. Use
 inference after installing the InsightFace dependencies and model packs. Raw
 image bytes are decoded for inference and are not persisted.
 
+For image enroll or verify requests, set `"require_liveness": true` to enforce
+the passive quality/PAD gate. The response includes a `liveness` report when an
+image payload is analyzed.
+
 Full endpoint examples are in `docs/API_REFERENCE.md`.
 
 ## Deployment Assets
@@ -275,9 +335,12 @@ Run ArcFace commands with:
 
 ```bash
 make deep-smoke
+make deep-defense
 ```
 
 Output:
 
 - `reports/lfw_deep_smoke_metrics.csv`
 - `reports/lfw_deep_smoke_report.json`
+- `reports/lfw_deep_defense_metrics.csv`
+- `reports/lfw_deep_defense_report.json`

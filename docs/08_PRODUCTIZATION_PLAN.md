@@ -88,20 +88,22 @@ Pilot success metrics:
 - Model version is attached to every enrollment and verification event.
 - Evaluation includes robustness and latency, not just accuracy.
 - The API can be deployed without exposing model internals to client apps.
+- Passive image quality/PAD checks can be enforced for image enroll and verify
+  requests.
 
 ## Hard Product Truths
 
 - Face recognition is sensitive and regulated in many regions.
 - The system must never be sold as surveillance tooling.
-- A real production launch needs liveness detection, external security review,
-  stronger key management, and legal review.
+- A real production launch still needs trained liveness/PAD, external security
+  review, stronger key management, and legal review.
 - The strongest commercial wedge is controlled, consent-based verification.
 
 ## Next Product Milestones
 
-1. Replace dashboard text embeddings with image upload inference.
-2. Add liveness/PAD checks before enrollment and verification.
-3. Add an EVM JSON-RPC adapter and gas report.
+1. Run full deep LFW plus CALFW/CPLFW/XQLFW benchmarks.
+2. Add trained liveness/PAD or active challenge checks.
+3. Wire the React console to live JSON-RPC contract events.
 4. Add role-based API keys and tenant isolation.
 5. Add exportable audit reports.
 6. Add admin dashboard views for tenants, models, and thresholds.

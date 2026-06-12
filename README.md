@@ -23,6 +23,8 @@ demo. This project aims higher:
 - A blockchain layer that never stores raw biometric images or plain face
   embeddings.
 - A revocation mechanism for biometric templates.
+- Owner/operator authorization and local EVM gas evidence for the trust layer.
+- A passive image quality/PAD gate for low-quality capture risk.
 - A trust-first demo UI that behaves like a serious security product, not a
   generic AI landing page.
 
@@ -93,6 +95,18 @@ Run the optional deep-model smoke after InsightFace dependencies are available:
 make deep-smoke
 ```
 
+Run the stronger sampled ArcFace defense benchmark:
+
+```bash
+make deep-defense
+```
+
+Run the local-chain proof after starting Anvil on `127.0.0.1:8545`:
+
+```bash
+make chain-live
+```
+
 Hash the example consent record:
 
 ```bash
@@ -135,7 +149,9 @@ make api
 
 The default embedder is a deterministic smoke-test path, not a final biometric
 claim. The API also supports base64 image payloads and optional InsightFace
-image inference after the deep dependencies and model packs are installed.
+image inference after the deep dependencies and model packs are installed. Image
+enroll and verify requests can enable `require_liveness` to enforce the passive
+quality/PAD gate.
 
 ## Current Implementation
 
@@ -144,14 +160,19 @@ image inference after the deep dependencies and model packs are installed.
 - Product API in `trustfacechain.api`.
 - SQLite persistence in `trustfacechain.store`.
 - Enroll/verify/revoke service logic in `trustfacechain.product_service`.
+- Passive image quality/PAD checks in `trustfacechain.liveness`.
 - Starter template protection in `trustfacechain.templates`.
 - Dependency-free mock embedder in `trustfacechain.models.hash_embedder`.
 - Solidity contract draft in `contracts/TrustFaceChain.sol`.
+- Local-chain deployment and gas script in `scripts/deploy-local-chain.js`.
 - Static demo dashboard in `app/`.
 - Interactive Streamlit dashboard in `app/streamlit_app.py`.
 - React pilot console in `web/`.
 - Optional InsightFace deep smoke reports in `reports/lfw_deep_smoke_metrics.csv`.
+- Sampled ArcFace defense report in `reports/lfw_deep_defense_metrics.csv`.
 - Full official LFW classical baseline in `reports/lfw_full_classical_metrics.csv`.
+- Local EVM report in `reports/local_chain_report.json` and
+  `reports/local_chain_gas.csv`.
 - Deployment starter files: `Dockerfile`, `.dockerignore`, `requirements.txt`.
 - Unit tests in `tests/`.
 

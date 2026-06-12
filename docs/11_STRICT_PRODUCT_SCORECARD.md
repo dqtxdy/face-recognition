@@ -1,6 +1,6 @@
 # Strict Product Scorecard
 
-Last updated: 2026-06-11
+Last updated: 2026-06-12
 
 This document is the manager view. It separates demo progress from evidence
 that would survive a serious technical defense or pilot conversation.
@@ -23,25 +23,30 @@ Current action:
 - Product UI talks to the FastAPI service.
 - Streamlit remains useful for internal benchmark viewing.
 
-### 2. The Current Dataset Evidence Is Not Big Enough
+### 2. Dataset Evidence Is Better, But Not Final
 
-Decision: current smoke benchmarks are not acceptable as final evidence.
+Decision: smoke benchmarks are not acceptable as final evidence. The new
+120-pair deep defense sample is good classroom evidence, but not the final
+scientific claim.
 
 Current evidence:
 
 - Synthetic benchmark demo.
 - Tiny official LFW-pairs smoke runs.
 - Deep smoke on 20 balanced LFW pairs.
+- Full official 6000-pair LFW classical baseline.
+- Deep ArcFace defense sample on 120 balanced LFW pairs.
 
 What this proves:
 
 - The pipeline runs.
 - Metrics export works.
 - Deep adapters can execute locally.
+- ArcFace-family models strongly outperform the classical baselines on the
+  sampled LFW protocol.
 
 What this does not prove:
 
-- Real-world accuracy.
 - Model superiority.
 - Robustness across age, pose, lighting, camera quality, or demographics.
 - Production readiness.
@@ -71,11 +76,12 @@ Rejected:
 | --- | --- | --- |
 | Pipeline smoke | 20-40 pairs, deterministic and deep paths | Passed |
 | LFW classical baseline | Full official LFW 6000-pair protocol | Passed |
-| LFW deep defense baseline | Full official LFW 6000-pair protocol | Not done |
+| LFW deep defense sample | 120 balanced LFW pairs, Buffalo-S and Buffalo-L | Passed |
+| LFW deep full protocol | Full official LFW 6000-pair protocol | Not done |
 | Harder public tests | CALFW/CPLFW or XQLFW protocol | Not done |
 | Consent demo set | 10-20 consenting users, 20-40 images each | Not done |
 | Robustness | brightness, blur, JPEG, occlusion, downscale | Demo path passed |
-| Latency | p50/p95 per model on target laptop | Not done |
+| Latency | Total embedding time measured for deep sample | Partial |
 | Failure analysis | false accepts, false rejects, no-face cases | Not done |
 
 ## Model Gates
@@ -103,10 +109,18 @@ Minimum final claim:
 | Auth | API key for `/v1/*` endpoints | Passed prototype gate |
 | Browser | CORS for local React console | Passed prototype gate |
 | UI | React pilot console | Added |
-| Liveness | Presentation attack detection | Not done |
+| Liveness | Passive image quality/PAD gate | Passed prototype gate |
 | Tenant safety | Tenant isolation and roles | Not done |
-| Blockchain | Local EVM deployment and gas report | Not done |
+| Blockchain | Local EVM deployment, operator auth, gas report | Passed |
 | Compliance | Dataset card, model card, privacy review | Not done |
+
+## Current 20/10 Verdict
+
+Capstone readiness: close to 20/10 if the defense is honest about scope.
+
+Product readiness: not sellable yet. The next blockers are tenant roles, full
+deep benchmarks, harder datasets, trained PAD, and live JSON-RPC dashboard
+integration.
 
 ## Final Defense Standard
 

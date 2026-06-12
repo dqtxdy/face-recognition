@@ -35,8 +35,10 @@ trust layer:
 6. Show audit event.
 7. Revoke the template.
 8. Prove future verification is blocked.
-9. Show LFW deep-model smoke benchmark.
-10. Show robustness report.
+9. Show passive PAD gate on an image payload.
+10. Show local-chain gas report.
+11. Show LFW deep-model defense sample.
+12. Show robustness report.
 
 ## Why A Buyer Cares
 
@@ -91,7 +93,8 @@ Current prototype limitations:
   camera embeddings.
 - The API accepts base64 image payloads and can route to optional InsightFace
   inference, but final biometric claims still require full-protocol benchmarks.
-- Liveness/PAD is not implemented.
+- Passive image quality/PAD enforcement is implemented, but a trained
+  anti-spoofing model or active challenge is still needed before production.
 - API-key protection is implemented, but role-based access control and tenant
   isolation are still required for a serious pilot.
 - Legal/compliance review is required before real biometric deployment.

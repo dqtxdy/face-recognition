@@ -106,11 +106,12 @@ Current mitigation:
 
 - audit event hashing,
 - revocation checks.
+- passive image quality/PAD gate for image requests.
 
 Future mitigation:
 
 - signed challenge nonce,
-- liveness/PAD,
+- trained liveness/PAD or active challenge,
 - timestamp windows,
 - request signing.
 

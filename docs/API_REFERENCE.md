@@ -78,6 +78,7 @@ Provide exactly one biometric payload:
 
 - `biometric_input`: lightweight text stand-in for development.
 - `image_base64`: base64-encoded PNG/JPEG face image for image inference.
+- `require_liveness`: optional image-only passive quality/PAD enforcement.
 
 ```bash
 curl -X POST http://127.0.0.1:8080/v1/enroll \
@@ -101,7 +102,8 @@ Response:
   "modelVersion": "demo-hash-v1",
   "templateCommitment": "...",
   "consentHash": "...",
-  "eventHash": "..."
+  "eventHash": "...",
+  "liveness": null
 }
 ```
 
@@ -112,6 +114,7 @@ Image enrollment uses the same endpoint:
   "subject_id": "subject-demo-001",
   "image_base64": "<base64-png-or-jpeg>",
   "model_version": "demo-image-hash-v1",
+  "require_liveness": true,
   "consent": {
     "purpose": "pilot access control",
     "scope": ["enrollment", "verification", "audit"]
@@ -123,6 +126,10 @@ For optional deep inference, use `insightface-buffalo_l` or
 `insightface-buffalo_s` as `model_version` after installing the optional
 InsightFace dependencies and model packs. The API stores encrypted embeddings
 and template commitments, not raw image bytes.
+
+When an image payload is analyzed, the response includes a `liveness` object
+with `passed`, `score`, `verdict`, and individual quality checks. This is a
+passive quality gate, not a certified anti-spoofing model.
 
 ## Verify
 
@@ -142,7 +149,8 @@ Image verification:
 {
   "subject_id": "subject-demo-001",
   "image_base64": "<base64-png-or-jpeg>",
-  "threshold": 0.62
+  "threshold": 0.62,
+  "require_liveness": true
 }
 ```
 
@@ -155,7 +163,8 @@ Response:
   "score": 1.0,
   "threshold": 0.62,
   "accepted": true,
-  "verificationHash": "..."
+  "verificationHash": "...",
+  "liveness": null
 }
 ```
 
@@ -213,5 +222,5 @@ events.
 - `400`: invalid biometric payload or unsupported image model.
 - `401`: missing or invalid API key when `TRUSTFACECHAIN_API_KEY` is set.
 - `409`: active identity already enrolled.
-- `422`: request validation failed.
+- `422`: request validation failed or enforced passive liveness failed.
 - `423`: identity revoked.

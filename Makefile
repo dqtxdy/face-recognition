@@ -1,7 +1,7 @@
 API_HOST ?= 127.0.0.1
 API_PORT ?= 8080
 
-.PHONY: test smoke benchmark-demo chain-demo robustness-demo deep-smoke contracts-compile api api-openapi web build-web demo-app check
+.PHONY: test smoke benchmark-demo chain-demo robustness-demo deep-smoke deep-defense contracts-compile chain-live api api-openapi web build-web demo-app check
 
 test:
 	PYTHONPATH=src python3 -m unittest discover -s tests
@@ -21,8 +21,14 @@ robustness-demo:
 deep-smoke:
 	PYTHONPATH=vendor/face:src python3 -m trustfacechain.cli benchmark-lfw-pairs --max-pairs 20 --models arcface,mobileface --csv reports/lfw_deep_smoke_metrics.csv --json reports/lfw_deep_smoke_report.json
 
+deep-defense:
+	PYTHONPATH=vendor/face:src python3 -m trustfacechain.cli benchmark-lfw-pairs --max-pairs $${DEEP_PAIRS:-120} --models arcface,mobileface --csv reports/lfw_deep_defense_metrics.csv --json reports/lfw_deep_defense_report.json
+
 contracts-compile:
 	npm run compile:contracts
+
+chain-live: contracts-compile
+	npm run chain:local
 
 api:
 	PYTHONPATH=src python3 -m uvicorn trustfacechain.api:app --host $(API_HOST) --port $(API_PORT)
