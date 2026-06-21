@@ -39,7 +39,7 @@ const models = [
   { id: "demo-image-hash-v1", label: "Deterministic Image Hash", status: "Local" },
   { id: "insightface-buffalo_s", label: "InsightFace Buffalo-S", status: "ArcFace Mobile" },
   { id: "insightface-buffalo_l", label: "InsightFace Buffalo-L", status: "ArcFace High-Res" },
-  { id: "facenet", label: "FaceNet Google (Requires torch)", status: "Google Deep Model" },
+  { id: "facenet", label: "FaceNet Google", status: "Google Deep Model" },
 ];
 
 
