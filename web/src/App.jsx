@@ -500,6 +500,9 @@ function App() {
                         </option>
                       ))}
                     </select>
+                    <span style={{ fontSize: "0.72rem", color: "var(--muted)", marginTop: "4px", fontWeight: "normal" }}>
+                      * Mô hình chỉ áp dụng khi đăng ký (Register). Xác thực (Verify) sẽ tự động sử dụng mô hình đã đăng ký trước đó.
+                    </span>
                   </label>
                 </div>
 
