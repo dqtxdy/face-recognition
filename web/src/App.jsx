@@ -227,6 +227,7 @@ function App() {
           scope: ["enrollment", "verification", "audit"],
           operator: "trust-portal-console",
         },
+        ...payload,
       });
       setLivenessReport(data.liveness ?? null);
       setResult({
