@@ -248,6 +248,19 @@ h1 {
   background: var(--surface-muted);
 }
 
+.file-control {
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.file-control input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
 .status-strip {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -607,6 +620,13 @@ textarea {
 
 .toggle-row.disabled {
   opacity: 0.5;
+}
+
+.image-input,
+.text-input {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .action-row {
