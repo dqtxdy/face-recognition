@@ -35,7 +35,7 @@ chain-live: contracts-compile
 	npm run chain:local
 
 api:
-	PYTHONPATH=src python3 -m uvicorn trustfacechain.api:app --host $(API_HOST) --port $(API_PORT)
+	PYTHONPATH=vendor/face:src python3 -m uvicorn trustfacechain.api:app --host $(API_HOST) --port $(API_PORT)
 
 api-openapi:
 	PYTHONPATH=src python3 scripts/export-openapi.py
