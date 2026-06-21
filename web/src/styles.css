@@ -68,18 +68,33 @@ button:disabled {
 }
 
 .app-shell {
-  display: grid;
-  grid-template-columns: 240px minmax(0, 1fr);
+  display: flex;
+  flex-direction: column;
   min-height: 100dvh;
 }
 
-.sidebar {
-  display: flex;
-  flex-direction: column;
-  gap: 32px;
-  border-right: 1px solid var(--line);
+.app-header {
+  border-bottom: 1px solid var(--line);
   background: var(--surface);
-  padding: 24px;
+  padding: 16px 40px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.header-container {
+  max-width: 1400px;
+  width: 100%;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
 }
 
 .brand {
@@ -113,31 +128,10 @@ button:disabled {
   font-weight: 500;
 }
 
-.nav-list {
-  display: grid;
-  gap: 4px;
-}
-
-.nav-list a {
-  border-radius: var(--radius);
-  color: var(--muted);
-  padding: 8px 12px;
-  text-decoration: none;
-  font-size: 0.9rem;
-  font-weight: 600;
-  transition: all 0.15s ease;
-}
-
-.nav-list a:hover {
-  background: var(--surface-muted);
-  color: var(--text);
-}
-
 .health {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  margin-top: auto;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   padding: 8px 12px;
@@ -366,9 +360,32 @@ h1 {
 }
 
 .identity-console {
-  display: grid;
-  grid-template-columns: 240px 1fr;
+  display: flex;
+  flex-direction: column;
   gap: 24px;
+}
+
+.dual-preview {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  padding: 0 14px;
+  margin-bottom: 14px;
+}
+
+.preview-label {
+  position: absolute;
+  top: 10px;
+  left: 12px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: rgba(255, 255, 255, 0.78);
+  padding: 2px 6px;
+  border-radius: 4px;
+  z-index: 10;
 }
 
 .sample-stage {
@@ -403,22 +420,19 @@ h1 {
   position: relative;
   display: grid;
   place-items: center;
-  margin: 0 12px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--surface);
-  min-height: 210px;
+  min-height: 220px;
   overflow: hidden;
 }
 
 .face-preview img,
 .face-preview video {
-  width: 132px;
-  height: 132px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: var(--surface-muted);
+  width: 100%;
+  height: 100%;
   object-fit: cover;
+  background: var(--surface-muted);
 }
 
 .biometric-mark {
@@ -829,25 +843,8 @@ td {
 }
 
 @media (max-width: 1024px) {
-  .app-shell {
-    grid-template-columns: 1fr;
-  }
-
-  .sidebar {
-    border-right: none;
-    border-bottom: 1px solid var(--line);
-    flex-direction: row;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  .nav-list {
-    display: flex;
-    gap: 8px;
-  }
-
-  .health {
-    margin-top: 0;
+  .app-header {
+    padding: 16px 24px;
   }
 
   .layout-grid,
@@ -859,16 +856,6 @@ td {
 @media (max-width: 768px) {
   .workspace {
     padding: 24px 16px;
-  }
-
-  .sidebar {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 16px;
-  }
-
-  .nav-list {
-    flex-direction: column;
   }
 
   .topbar {

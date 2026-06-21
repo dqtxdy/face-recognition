@@ -71,10 +71,7 @@ function App() {
   const [subjectId, setSubjectId] = usePersistentState("tfc-subject-id", "subject-pilot-001");
   const [modelVersion, setModelVersion] = useState("demo-image-hash-v1");
   const [threshold, setThreshold] = useState(0.62);
-  const [mode, setMode] = useState("image");
-  const [biometricText, setBiometricText] = useState("pilot sample");
   const [imageBase64, setImageBase64] = useState(SAMPLE_IMAGE_BASE64);
-  const [consentPurpose, setConsentPurpose] = useState("authorized gate access");
   const [requireLiveness, setRequireLiveness] = useState(false);
   const [livenessReport, setLivenessReport] = useState(null);
   const [result, setResult] = useState(null);
@@ -82,29 +79,62 @@ function App() {
   const [useWebcam, setUseWebcam] = useState(false);
   const [stream, setStream] = useState(null);
   const videoRef = useRef(null);
+  const [isSubjectEnrolled, setIsSubjectEnrolled] = useState(false);
+  const [enrolledImages, setEnrolledImages] = useState(() => {
+    try {
+      const saved = localStorage.getItem("tfc-enrolled-images");
+      if (saved) return JSON.parse(saved);
+    } catch (e) {
+      console.error("Failed to load enrolled images", e);
+    }
+    return {
+      "subject-pilot-001": SAMPLE_IMAGE_BASE64,
+    };
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("tfc-enrolled-images", JSON.stringify(enrolledImages));
+    } catch (e) {
+      console.error("Failed to save enrolled images", e);
+    }
+  }, [enrolledImages]);
 
   const api = useMemo(() => createApiClient(apiUrl, apiKey), [apiUrl, apiKey]);
   const payload = useMemo(() => {
-    if (mode === "image") {
-      return { image_base64: imageBase64 };
+    return { image_base_64: imageBase64 };
+  }, [imageBase64]);
+
+  async function checkIdentity() {
+    if (!subjectId.trim()) {
+      setIsSubjectEnrolled(false);
+      return;
     }
-    return { biometric_input: biometricText };
-  }, [biometricText, imageBase64, mode]);
+    try {
+      const data = await api.get(`/v1/identities/${subjectId}`);
+      setIsSubjectEnrolled(data && !data.revoked);
+    } catch {
+      setIsSubjectEnrolled(false);
+    }
+  }
 
   useEffect(() => {
     checkHealth();
     refreshState();
   }, []);
 
-  // Automatically check blockchain revocation state whenever the subject ID changes
+  // Automatically check identity existence and blockchain revocation state whenever the subject ID changes
   useEffect(() => {
     const timer = setTimeout(() => {
       if (subjectId.trim()) {
         checkChain();
+        checkIdentity();
+      } else {
+        setIsSubjectEnrolled(false);
       }
     }, 500); // Debounce to avoid spamming calls
     return () => clearTimeout(timer);
-  }, [subjectId, rpcUrl, contractAddress]);
+  }, [subjectId, rpcUrl, contractAddress, api]);
 
   async function startWebcam() {
     setLivenessReport(null);
@@ -220,9 +250,9 @@ function App() {
         subject_id: subjectId,
         model_version: modelVersion,
         allow_reenroll: true,
-        require_liveness: mode === "image" && requireLiveness,
+        require_liveness: requireLiveness,
         consent: {
-          purpose: consentPurpose,
+          purpose: "authorized gate access",
           scope: ["enrollment", "verification", "audit"],
           operator: "trust-portal-console",
         },
@@ -234,6 +264,13 @@ function App() {
         title: "Proof Committed",
         detail: resultDetail(shortHash(data.templateCommitment), data.liveness),
       });
+      if (imageBase64) {
+        setEnrolledImages((prev) => ({
+          ...prev,
+          [subjectId]: imageBase64,
+        }));
+      }
+      setIsSubjectEnrolled(true);
       await Promise.all([refreshState(), checkChain()]);
     } catch (error) {
       setResult({ type: "error", title: "Enrollment Rejected", detail: error.message });
@@ -246,12 +283,12 @@ function App() {
     setBusyAction("verify");
     try {
       // Direct integration: Check blockchain state before verifying
-      await checkChain();
+      await Promise.all([checkChain(), checkIdentity()]);
 
       const data = await api.post("/v1/verify", {
         subject_id: subjectId,
         threshold: Number(threshold),
-        require_liveness: mode === "image" && requireLiveness,
+        require_liveness: requireLiveness,
         ...payload,
       });
       setLivenessReport(data.liveness ?? null);
@@ -280,6 +317,12 @@ function App() {
         title: "Proof Anchor Revoked",
         detail: `Anchor event: ${shortHash(data.eventHash)}`,
       });
+      setEnrolledImages((prev) => {
+        const next = { ...prev };
+        delete next[subjectId];
+        return next;
+      });
+      setIsSubjectEnrolled(false);
       await Promise.all([refreshState(), checkChain()]);
     } catch (error) {
       setResult({ type: "error", title: "Revocation Rejected", detail: error.message });
@@ -305,35 +348,32 @@ function App() {
 
   return (
     <main className="app-shell">
-      <aside className="sidebar" aria-label="Portal Navigation">
-        <div className="brand">
-          <span className="brand-mark" aria-hidden="true" />
-          <div>
-            <strong>TrustFaceChain</strong>
-            <span>Identity Hub</span>
+      <header className="app-header">
+        <div className="header-container">
+          <div className="brand">
+            <span className="brand-mark" aria-hidden="true" />
+            <div>
+              <strong>TrustFaceChain</strong>
+              <span>Identity Hub</span>
+            </div>
+          </div>
+          <div className="header-actions">
+            <div className={`health health-${health.status}`}>
+              <Server size={14} />
+              <span>API Node: {health.status}</span>
+            </div>
+            <button className="icon-button" onClick={refreshState} disabled={busyAction === "refresh"}>
+              <RefreshCw size={14} />
+              <span>Sync Ledger</span>
+            </button>
           </div>
         </div>
-        <nav className="nav-list">
-          <a href="#operations">Scanner</a>
-          <a href="#audit">Verification Ledger</a>
-          <a href="#readiness">Compliance Gates</a>
-        </nav>
-        <div className={`health health-${health.status}`}>
-          <Server size={14} />
-          <span>API Node: {health.status}</span>
-        </div>
-      </aside>
+      </header>
 
       <section className="workspace">
         <header className="topbar">
           <div>
             <h1>TrustFace Console</h1>
-          </div>
-          <div className="top-actions">
-            <button className="icon-button" onClick={refreshState} disabled={busyAction === "refresh"}>
-              <RefreshCw size={14} />
-              <span>Sync Ledger</span>
-            </button>
           </div>
         </header>
 
@@ -357,15 +397,44 @@ function App() {
             <div className="identity-console">
               <div className="sample-stage">
                 <div className="stage-toolbar">
-                  <span>Camera Feed</span>
-                  <strong>{mode}</strong>
+                  <span>Dual Biometric Preview</span>
+                  <strong>Camera Feed</strong>
                 </div>
-                {mode === "image" ? (
+                <div className="dual-preview">
+                  {/* Left Frame: Registered Face (Reference Proof) */}
                   <div className="face-preview">
+                    <span className="preview-label">Registered Face</span>
+                    {isSubjectEnrolled ? (
+                      enrolledImages[subjectId] ? (
+                        <img
+                          src={`data:image/png;base64,${enrolledImages[subjectId]}`}
+                          alt="Registered Reference"
+                        />
+                      ) : (
+                        <div className="text-preview" style={{ border: "none", minHeight: "auto", padding: "16px" }}>
+                          <LockKeyhole size={32} style={{ color: "var(--accent)" }} />
+                          <strong style={{ fontSize: "0.8rem", color: "var(--muted)", textAlign: "center", marginTop: "8px" }}>
+                            Proof Active.<br />Raw image deleted for privacy.
+                          </strong>
+                        </div>
+                      )
+                    ) : (
+                      <div className="text-preview" style={{ border: "none", minHeight: "auto", padding: "16px" }}>
+                        <Ban size={32} style={{ color: "var(--muted)" }} />
+                        <strong style={{ fontSize: "0.8rem", color: "var(--muted)", textAlign: "center", marginTop: "8px" }}>
+                          Not Enrolled /<br />Unregistered
+                        </strong>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Right Frame: Live Probe / Scanner Feed */}
+                  <div className="face-preview">
+                    <span className="preview-label">Scanner Feed</span>
                     {useWebcam ? (
                       <video ref={videoRef} autoPlay playsInline className="webcam-video" />
                     ) : imageBase64 && !showImagePlaceholder ? (
-                      <img src={imagePreviewSrc} alt="" />
+                      <img src={imagePreviewSrc} alt="Scanner Probe" />
                     ) : (
                       <div className="biometric-mark" aria-hidden="true">
                         <span />
@@ -375,12 +444,7 @@ function App() {
                     )}
                     <span className="scan-line" aria-hidden="true" />
                   </div>
-                ) : (
-                  <div className="text-preview">
-                    <KeyRound size={32} />
-                    <strong>{biometricText || "Empty"}</strong>
-                  </div>
-                )}
+                </div>
                 
                 <div className="liveness-card">
                   <ShieldCheck size={14} />
@@ -398,7 +462,15 @@ function App() {
                   </strong>
                 </div>
               </div>
+            </div>
+          </section>
 
+          {/* Right Section: Parameter Configuration & Setup Panel */}
+          <section className="settings-panel">
+            <div className="panel">
+              <div className="panel-heading">
+                <h2>Parameters & Setup</h2>
+              </div>
               <div className="control-stack">
                 <div className="form-grid">
                   <label>
@@ -419,7 +491,7 @@ function App() {
                 </div>
 
                 <div className="form-grid">
-                  <label>
+                  <label style={{ gridColumn: "span 2" }}>
                     <span>Model</span>
                     <select value={modelVersion} onChange={(event) => setModelVersion(event.target.value)}>
                       {models.map((model) => (
@@ -429,79 +501,43 @@ function App() {
                       ))}
                     </select>
                   </label>
-                  <label>
-                    <span>Purpose</span>
-                    <input value={consentPurpose} onChange={(event) => setConsentPurpose(event.target.value)} />
-                  </label>
                 </div>
 
-                <div className="segmented" role="tablist" aria-label="Biometric source">
-                  <button className={mode === "image" ? "selected" : ""} onClick={() => setMode("image")}>
-                    <FileImage size={14} />
-                    <span>Camera</span>
-                  </button>
-                  <button
-                    className={mode === "text" ? "selected" : ""}
-                    onClick={() => {
-                      setMode("text");
-                      stopWebcam();
-                    }}
-                  >
-                    <KeyRound size={14} />
-                    <span>Mock Text</span>
-                  </button>
-                </div>
-
-                <label className={`toggle-row ${mode !== "image" ? "disabled" : ""}`}>
+                <label className="toggle-row">
                   <span>Enforce Liveness check</span>
                   <input
                     type="checkbox"
                     checked={requireLiveness}
                     onChange={(event) => setRequireLiveness(event.target.checked)}
-                    disabled={mode !== "image"}
                   />
                 </label>
 
-                {mode === "image" ? (
-                  <div className="image-input">
-                    <div style={{ display: "flex", gap: "8px" }}>
-                      <label className="file-control">
-                        <Upload size={14} />
-                        <span>Upload File</span>
-                        <input type="file" accept="image/png,image/jpeg" onChange={onImageFile} />
-                      </label>
-                      {!useWebcam ? (
-                        <button type="button" className="icon-button" onClick={startWebcam}>
+                <div className="image-input">
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    <label className="file-control" style={{ flex: 1 }}>
+                      <Upload size={14} />
+                      <span>Upload File</span>
+                      <input type="file" accept="image/png,image/jpeg" onChange={onImageFile} />
+                    </label>
+                    {!useWebcam ? (
+                      <button type="button" className="icon-button" style={{ flex: 1 }} onClick={startWebcam}>
+                        <Camera size={14} />
+                        <span>Use Webcam</span>
+                      </button>
+                    ) : (
+                      <>
+                        <button type="button" className="icon-button command primary" style={{ flex: 1 }} onClick={captureWebcam}>
                           <Camera size={14} />
-                          <span>Use Webcam</span>
+                          <span>Capture</span>
                         </button>
-                      ) : (
-                        <>
-                          <button type="button" className="icon-button command primary" onClick={captureWebcam}>
-                            <Camera size={14} />
-                            <span>Capture</span>
-                          </button>
-                          <button type="button" className="icon-button command danger" onClick={stopWebcam}>
-                            <Ban size={14} />
-                            <span>Cancel</span>
-                          </button>
-                        </>
-                      )}
-                    </div>
-                    <textarea
-                      aria-label="Base64 data"
-                      value={imageBase64}
-                      onChange={(event) => setImageBase64(event.target.value)}
-                      rows={3}
-                      placeholder="Base64 string display..."
-                    />
+                        <button type="button" className="icon-button command danger" style={{ flex: 1 }} onClick={stopWebcam}>
+                          <Ban size={14} />
+                          <span>Cancel</span>
+                        </button>
+                      </>
+                    )}
                   </div>
-                ) : (
-                  <label className="text-input">
-                    <span>Mock Input Token</span>
-                    <input value={biometricText} onChange={(event) => setBiometricText(event.target.value)} />
-                  </label>
-                )}
+                </div>
 
                 <div className="action-row">
                   <button className="command primary" onClick={enroll} disabled={Boolean(busyAction)}>
@@ -524,47 +560,6 @@ function App() {
                     <span>{result.detail}</span>
                   </div>
                 ) : null}
-              </div>
-            </div>
-          </section>
-
-          {/* Right Section: Node & Network Config + Assurance */}
-          <section className="settings-panel">
-            <div className="panel" style={{ padding: "16px" }}>
-              <details className="dev-settings">
-                <summary style={{ cursor: "pointer", fontWeight: "600", fontSize: "0.85rem", color: "var(--muted)", display: "flex", alignItems: "center", gap: "8px" }}>
-                  <Network size={14} />
-                  <span>Network & Contract Settings</span>
-                </summary>
-                <div style={{ display: "grid", gap: "10px", marginTop: "12px", borderTop: "1px solid var(--line)", paddingTop: "12px" }}>
-                  <label>
-                    <span style={{ fontSize: "0.75rem", fontWeight: "600", color: "var(--muted)" }}>Node RPC URL</span>
-                    <input style={{ background: "var(--surface-muted)", fontSize: "0.8rem", padding: "6px 10px" }} value={rpcUrl} onChange={(event) => setRpcUrl(event.target.value)} />
-                  </label>
-                  <label>
-                    <span style={{ fontSize: "0.75rem", fontWeight: "600", color: "var(--muted)" }}>Contract Address</span>
-                    <input style={{ background: "var(--surface-muted)", fontSize: "0.8rem", padding: "6px 10px" }} value={contractAddress} onChange={(event) => setContractAddress(event.target.value)} />
-                  </label>
-                </div>
-              </details>
-            </div>
-
-            <div className="assurance-stack">
-              <div style={{ background: "var(--surface)" }}>
-                <FileKey2 size={16} />
-                <span>Zero-Storage Privacy (Off-Chain Matching)</span>
-              </div>
-              <div style={{ background: "var(--surface)" }}>
-                <ShieldCheck size={16} />
-                <span>Presentation Attack Detection Gate (PAD)</span>
-              </div>
-              <div style={{ background: "var(--surface)" }}>
-                <Binary size={16} />
-                <span>Cryptographic Identity Commitments On-Chain</span>
-              </div>
-              <div style={{ background: "var(--surface)" }}>
-                <Network size={16} />
-                <span>Immutable Template Revocation Registry</span>
               </div>
             </div>
           </section>
