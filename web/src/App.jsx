@@ -36,23 +36,15 @@ const SAMPLE_IMAGE_BASE64 = createDemoImageBase64();
 const IS_REVOKED_SELECTOR = "0x4294857f";
 
 const models = [
-  { id: "demo-image-hash-v1", label: "Deterministic Image Hash", status: "Local / Fast" },
+  { id: "demo-image-hash-v1", label: "Deterministic Image Hash", status: "Local" },
   { id: "insightface-buffalo_s", label: "InsightFace Buffalo-S", status: "ArcFace Mobile" },
   { id: "insightface-buffalo_l", label: "InsightFace Buffalo-L", status: "ArcFace High-Res" },
-  { id: "demo-hash-v1", label: "Fallback Text Embedder", status: "Debug Only" },
 ];
 
 const datasetRows = [
   { name: "NIST LFW Standard", scope: "6,000 balanced pairs evaluation", state: "Completed" },
   { name: "Synthetic Robustness", scope: "Pose, light, blur corruptions test", state: "Completed" },
   { name: "Cross-Age / Quality", scope: "CALFW / XQLFW extreme variations", state: "In Pipeline" },
-];
-
-const trustStages = [
-  { icon: ScanFace, label: "1. Capture Frame" },
-  { icon: Fingerprint, label: "2. Generate Vector" },
-  { icon: LockKeyhole, label: "3. Mask Commitment" },
-  { icon: Network, label: "4. Consensus Anchor" },
 ];
 
 function App() {
@@ -71,13 +63,12 @@ function App() {
     DEFAULT_CONTRACT_ADDRESS,
     Boolean(QUERY_CONTRACT_ADDRESS),
   );
-  const [chainSubject, setChainSubject] = usePersistentState("tfc-chain-subject", "subject-demo-001");
   const [chainState, setChainState] = useState({ status: "idle", detail: "Unchecked" });
   const [apiKey, setApiKey] = usePersistentState("tfc-api-key", "");
   const [health, setHealth] = useState({ status: "unknown", detail: "Unchecked" });
   const [metrics, setMetrics] = useState(null);
   const [events, setEvents] = useState([]);
-  const [subjectId, setSubjectId] = useState("subject-pilot-001");
+  const [subjectId, setSubjectId] = usePersistentState("tfc-subject-id", "subject-pilot-001");
   const [modelVersion, setModelVersion] = useState("demo-image-hash-v1");
   const [threshold, setThreshold] = useState(0.62);
   const [mode, setMode] = useState("image");
@@ -105,6 +96,16 @@ function App() {
     refreshState();
   }, []);
 
+  // Automatically check blockchain revocation state whenever the subject ID changes
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (subjectId.trim()) {
+        checkChain();
+      }
+    }, 500); // Debounce to avoid spamming calls
+    return () => clearTimeout(timer);
+  }, [subjectId, rpcUrl, contractAddress]);
+
   async function startWebcam() {
     setLivenessReport(null);
     try {
@@ -121,8 +122,8 @@ function App() {
     } catch (error) {
       setResult({
         type: "error",
-        title: "Camera Access Failed",
-        detail: error.message || "No camera device found.",
+        title: "Camera Failed",
+        detail: error.message || "Could not start camera.",
       });
     }
   }
@@ -168,9 +169,9 @@ function App() {
   }
 
   async function checkChain() {
-    setBusyAction("chain");
+    if (!subjectId.trim()) return;
     try {
-      const subjectBytes = await toBytes32(chainSubject);
+      const subjectBytes = await toBytes32(subjectId);
       const data = `${IS_REVOKED_SELECTOR}${subjectBytes.slice(2)}`;
       const response = await fetch(rpcUrl, {
         method: "POST",
@@ -189,12 +190,10 @@ function App() {
       const revoked = BigInt(payload.result || "0x0") !== 0n;
       setChainState({
         status: "online",
-        detail: revoked ? "Revoked / Blocked" : "Active / Verified",
+        detail: revoked ? "Revoked / Blocked" : "Active",
       });
     } catch (error) {
       setChainState({ status: "offline", detail: error.message });
-    } finally {
-      setBusyAction("");
     }
   }
 
@@ -232,10 +231,10 @@ function App() {
       setLivenessReport(data.liveness ?? null);
       setResult({
         type: "success",
-        title: "Proof Committed Successfully",
+        title: "Proof Committed",
         detail: resultDetail(shortHash(data.templateCommitment), data.liveness),
       });
-      await refreshState();
+      await Promise.all([refreshState(), checkChain()]);
     } catch (error) {
       setResult({ type: "error", title: "Enrollment Rejected", detail: error.message });
     } finally {
@@ -246,6 +245,9 @@ function App() {
   async function verify() {
     setBusyAction("verify");
     try {
+      // Direct integration: Check blockchain state before verifying
+      await checkChain();
+
       const data = await api.post("/v1/verify", {
         subject_id: subjectId,
         threshold: Number(threshold),
@@ -255,12 +257,12 @@ function App() {
       setLivenessReport(data.liveness ?? null);
       setResult({
         type: data.accepted ? "success" : "warn",
-        title: data.accepted ? "Identity Authenticated" : "Authentication Failed",
+        title: data.accepted ? "Identity Verified" : "Verification Failed",
         detail: resultDetail(`${data.score.toFixed(4)} (Threshold: ${data.threshold})`, data.liveness),
       });
       await refreshState();
     } catch (error) {
-      setResult({ type: "error", title: "Verification Error", detail: error.message });
+      setResult({ type: "error", title: "Verification Rejected", detail: error.message });
     } finally {
       setBusyAction("");
     }
@@ -271,14 +273,14 @@ function App() {
     try {
       const data = await api.post("/v1/revoke", {
         subject_id: subjectId,
-        reason: "operator requested template revocation",
+        reason: "operator template revocation request",
       });
       setResult({
         type: "warn",
-        title: "Cryptographic Anchor Revoked",
-        detail: shortHash(data.eventHash),
+        title: "Proof Anchor Revoked",
+        detail: `Anchor event: ${shortHash(data.eventHash)}`,
       });
-      await refreshState();
+      await Promise.all([refreshState(), checkChain()]);
     } catch (error) {
       setResult({ type: "error", title: "Revocation Rejected", detail: error.message });
     } finally {
@@ -299,16 +301,11 @@ function App() {
   const activeModel = models.find((model) => model.id === modelVersion) ?? models[0];
   const imagePreviewSrc = imageBase64 ? `data:image/png;base64,${imageBase64}` : "";
   const showImagePlaceholder = imageBase64 === SAMPLE_IMAGE_BASE64;
-  const latestEvent = events[0];
-  const activeRatio =
-    metrics?.identities > 0
-      ? Math.round((metrics.activeIdentities / metrics.identities) * 100)
-      : 0;
   const livenessState = livenessLabel(livenessReport);
 
   return (
     <main className="app-shell">
-      <aside className="sidebar" aria-label="Primary Portal Navigation">
+      <aside className="sidebar" aria-label="Portal Navigation">
         <div className="brand">
           <span className="brand-mark" aria-hidden="true" />
           <div>
@@ -317,12 +314,12 @@ function App() {
           </div>
         </div>
         <nav className="nav-list">
-          <a href="#operations">Identity Scanner</a>
+          <a href="#operations">Scanner</a>
           <a href="#audit">Verification Ledger</a>
           <a href="#readiness">Compliance Gates</a>
         </nav>
         <div className={`health health-${health.status}`}>
-          <Server size={16} />
+          <Server size={14} />
           <span>API Node: {health.status}</span>
         </div>
       </aside>
@@ -330,43 +327,29 @@ function App() {
       <section className="workspace">
         <header className="topbar">
           <div>
-            <p className="eyebrow">Trust Layer Management Console</p>
-            <h1>Decentralized Identity Center</h1>
+            <h1>TrustFace Console</h1>
           </div>
           <div className="top-actions">
-            <div className="signal-card">
-              <span>Secure Anchor Rate</span>
-              <strong>{activeRatio}% Active</strong>
-            </div>
             <button className="icon-button" onClick={refreshState} disabled={busyAction === "refresh"}>
-              <RefreshCw size={16} />
+              <RefreshCw size={14} />
               <span>Sync Ledger</span>
             </button>
           </div>
         </header>
 
-        <section className="status-strip" aria-label="System Cryptographic metrics">
-          <Metric icon={Database} label="Registered Identity Commitments" value={metrics?.identities ?? "-"} />
-          <Metric icon={ShieldCheck} label="Active Secure Anchors" value={metrics?.activeIdentities ?? "-"} />
-          <Metric icon={Ban} label="Revoked Biometrics" value={metrics?.revokedIdentities ?? "-"} />
-          <Metric icon={Activity} label="Ledger Transaction Events" value={metrics?.auditEvents ?? "-"} />
-        </section>
-
-        <section className="mission-strip" aria-label="Decentralized Trust Pipeline Process">
-          {trustStages.map((stage) => (
-            <div className="trust-stage" key={stage.label}>
-              <stage.icon size={18} />
-              <span>{stage.label}</span>
-            </div>
-          ))}
+        <section className="status-strip" aria-label="System stats">
+          <Metric icon={Database} label="Enrolled Users" value={metrics?.identities ?? "-"} />
+          <Metric icon={ShieldCheck} label="Active Keys" value={metrics?.activeIdentities ?? "-"} />
+          <Metric icon={Ban} label="Revoked Keys" value={metrics?.revokedIdentities ?? "-"} />
+          <Metric icon={Activity} label="Total Logs" value={metrics?.auditEvents ?? "-"} />
         </section>
 
         <section className="layout-grid" id="operations">
-          <section className="panel operation-panel" aria-labelledby="enroll-title">
+          {/* Main Scanner Section */}
+          <section className="panel operation-panel" aria-labelledby="scanner-title">
             <div className="panel-heading">
               <div>
-                <p className="eyebrow">Biometric Capture & Verification</p>
-                <h2 id="enroll-title">Secure Scanner Gateway</h2>
+                <h2 id="scanner-title">Biometric Scanner</h2>
               </div>
               <span className="model-pill">{activeModel.status}</span>
             </div>
@@ -374,18 +357,13 @@ function App() {
             <div className="identity-console">
               <div className="sample-stage">
                 <div className="stage-toolbar">
-                  <span>Scanner Feed</span>
-                  <strong>{mode} input</strong>
+                  <span>Camera Feed</span>
+                  <strong>{mode}</strong>
                 </div>
                 {mode === "image" ? (
                   <div className="face-preview">
                     {useWebcam ? (
-                      <video
-                        ref={videoRef}
-                        autoPlay
-                        playsInline
-                        className="webcam-video"
-                      />
+                      <video ref={videoRef} autoPlay playsInline className="webcam-video" />
                     ) : imageBase64 && !showImagePlaceholder ? (
                       <img src={imagePreviewSrc} alt="" />
                     ) : (
@@ -399,28 +377,36 @@ function App() {
                   </div>
                 ) : (
                   <div className="text-preview">
-                    <KeyRound size={36} />
-                    <strong>{biometricText || "empty vector string"}</strong>
+                    <KeyRound size={32} />
+                    <strong>{biometricText || "Empty"}</strong>
                   </div>
                 )}
-                <div className="hash-strip">
-                  <span>Subject: {subjectId}</span>
-                </div>
-                <div className={`liveness-card liveness-${livenessState.tone}`}>
+                
+                <div className="liveness-card">
                   <ShieldCheck size={14} />
                   <span>Liveness (PAD):</span>
-                  <strong>{livenessState.label}</strong>
+                  <strong className={livenessState.tone === "pass" ? "text-accent" : livenessState.tone === "review" ? "text-amber" : ""}>
+                    {livenessState.label}
+                  </strong>
+                </div>
+
+                <div className="liveness-card" style={{ borderTop: "1px solid var(--line)" }}>
+                  <Network size={14} />
+                  <span>On-Chain Status:</span>
+                  <strong style={{ color: chainState.detail === "Active" ? "var(--accent)" : chainState.detail === "Unchecked" ? "var(--muted)" : "var(--danger)" }}>
+                    {chainState.detail}
+                  </strong>
                 </div>
               </div>
 
               <div className="control-stack">
                 <div className="form-grid">
                   <label>
-                    <span>Subject Identifier</span>
-                    <input value={subjectId} onChange={(event) => setSubjectId(event.target.value)} />
+                    <span>Subject ID</span>
+                    <input value={subjectId} onChange={(event) => setSubjectId(event.target.value)} placeholder="e.g. subject-001" />
                   </label>
                   <label>
-                    <span>Verification Threshold</span>
+                    <span>Threshold</span>
                     <input
                       type="number"
                       min="-1"
@@ -434,7 +420,7 @@ function App() {
 
                 <div className="form-grid">
                   <label>
-                    <span>Algorithmic Model</span>
+                    <span>Model</span>
                     <select value={modelVersion} onChange={(event) => setModelVersion(event.target.value)}>
                       {models.map((model) => (
                         <option value={model.id} key={model.id}>
@@ -444,15 +430,15 @@ function App() {
                     </select>
                   </label>
                   <label>
-                    <span>Consent Objective</span>
+                    <span>Purpose</span>
                     <input value={consentPurpose} onChange={(event) => setConsentPurpose(event.target.value)} />
                   </label>
                 </div>
 
-                <div className="segmented" role="tablist" aria-label="Biometric payload source type">
+                <div className="segmented" role="tablist" aria-label="Biometric source">
                   <button className={mode === "image" ? "selected" : ""} onClick={() => setMode("image")}>
                     <FileImage size={14} />
-                    <span>Face Camera</span>
+                    <span>Camera</span>
                   </button>
                   <button
                     className={mode === "text" ? "selected" : ""}
@@ -462,12 +448,12 @@ function App() {
                     }}
                   >
                     <KeyRound size={14} />
-                    <span>Mock Text Hash</span>
+                    <span>Mock Text</span>
                   </button>
                 </div>
 
                 <label className={`toggle-row ${mode !== "image" ? "disabled" : ""}`}>
-                  <span>Enforce Passive Liveness Gate</span>
+                  <span>Enforce Liveness check</span>
                   <input
                     type="checkbox"
                     checked={requireLiveness}
@@ -480,34 +466,34 @@ function App() {
                   <div className="image-input">
                     <div style={{ display: "flex", gap: "8px" }}>
                       <label className="file-control">
-                        <Upload size={16} />
+                        <Upload size={14} />
                         <span>Upload File</span>
                         <input type="file" accept="image/png,image/jpeg" onChange={onImageFile} />
                       </label>
                       {!useWebcam ? (
                         <button type="button" className="icon-button" onClick={startWebcam}>
-                          <Camera size={16} />
+                          <Camera size={14} />
                           <span>Use Webcam</span>
                         </button>
                       ) : (
                         <>
                           <button type="button" className="icon-button command primary" onClick={captureWebcam}>
-                            <Camera size={16} />
-                            <span>Capture Frame</span>
+                            <Camera size={14} />
+                            <span>Capture</span>
                           </button>
                           <button type="button" className="icon-button command danger" onClick={stopWebcam}>
-                            <Ban size={16} />
-                            <span>Stop Camera</span>
+                            <Ban size={14} />
+                            <span>Cancel</span>
                           </button>
                         </>
                       )}
                     </div>
                     <textarea
-                      aria-label="Base64 image payload output"
+                      aria-label="Base64 data"
                       value={imageBase64}
                       onChange={(event) => setImageBase64(event.target.value)}
-                      rows={4}
-                      placeholder="Base64 vector data displays here..."
+                      rows={3}
+                      placeholder="Base64 string display..."
                     />
                   </div>
                 ) : (
@@ -520,15 +506,15 @@ function App() {
                 <div className="action-row">
                   <button className="command primary" onClick={enroll} disabled={Boolean(busyAction)}>
                     <BadgeCheck size={16} />
-                    <span>Commit Proof</span>
+                    <span>Register Face</span>
                   </button>
                   <button className="command" onClick={verify} disabled={Boolean(busyAction)}>
                     <Gauge size={16} />
-                    <span>Verify Identity</span>
+                    <span>Verify Face</span>
                   </button>
                   <button className="command danger" onClick={revoke} disabled={Boolean(busyAction)}>
                     <Ban size={16} />
-                    <span>Revoke Anchor</span>
+                    <span>Revoke Face</span>
                   </button>
                 </div>
 
@@ -542,54 +528,43 @@ function App() {
             </div>
           </section>
 
-          <section className="panel settings-panel" aria-labelledby="settings-title">
-            <div className="panel-heading">
-              <div>
-                <p className="eyebrow">On-Chain Proof Verification</p>
-                <h2 id="settings-title">Ledger Anchors</h2>
-              </div>
-            </div>
-            
-            <div className="chain-form">
-              <label>
-                <span>JSON-RPC Node URL</span>
-                <input value={rpcUrl} onChange={(event) => setRpcUrl(event.target.value)} />
-              </label>
-              <label>
-                <span>Solidity Contract Address</span>
-                <input value={contractAddress} onChange={(event) => setContractAddress(event.target.value)} />
-              </label>
-              <label>
-                <span>Query Target Subject</span>
-                <input value={chainSubject} onChange={(event) => setChainSubject(event.target.value)} />
-              </label>
-              <button className="command primary" onClick={checkChain} disabled={busyAction === "chain"}>
-                <Network size={16} />
-                <span>Verify On-Chain Status</span>
-              </button>
-              {chainState.detail !== "Unchecked" ? (
-                <div style={{ marginTop: "8px", fontSize: "0.85rem", fontWeight: "600", color: chainState.status === "online" ? "var(--accent)" : "var(--danger)" }}>
-                  Contract Status: {chainState.detail}
+          {/* Right Section: Node & Network Config + Assurance */}
+          <section className="settings-panel">
+            <div className="panel" style={{ padding: "16px" }}>
+              <details className="dev-settings">
+                <summary style={{ cursor: "pointer", fontWeight: "600", fontSize: "0.85rem", color: "var(--muted)", display: "flex", alignItems: "center", gap: "8px" }}>
+                  <Network size={14} />
+                  <span>Network & Contract Settings</span>
+                </summary>
+                <div style={{ display: "grid", gap: "10px", marginTop: "12px", borderTop: "1px solid var(--line)", paddingTop: "12px" }}>
+                  <label>
+                    <span style={{ fontSize: "0.75rem", fontWeight: "600", color: "var(--muted)" }}>Node RPC URL</span>
+                    <input style={{ background: "var(--surface-muted)", fontSize: "0.8rem", padding: "6px 10px" }} value={rpcUrl} onChange={(event) => setRpcUrl(event.target.value)} />
+                  </label>
+                  <label>
+                    <span style={{ fontSize: "0.75rem", fontWeight: "600", color: "var(--muted)" }}>Contract Address</span>
+                    <input style={{ background: "var(--surface-muted)", fontSize: "0.8rem", padding: "6px 10px" }} value={contractAddress} onChange={(event) => setContractAddress(event.target.value)} />
+                  </label>
                 </div>
-              ) : null}
+              </details>
             </div>
 
             <div className="assurance-stack">
-              <div>
+              <div style={{ background: "var(--surface)" }}>
                 <FileKey2 size={16} />
-                <span>Privacy Rule: Off-Chain Face Embeddings</span>
+                <span>Zero-Storage Privacy (Off-Chain Matching)</span>
               </div>
-              <div>
+              <div style={{ background: "var(--surface)" }}>
                 <ShieldCheck size={16} />
-                <span>Security Gate: Liveness Detection (PAD)</span>
+                <span>Presentation Attack Detection Gate (PAD)</span>
               </div>
-              <div>
+              <div style={{ background: "var(--surface)" }}>
                 <Binary size={16} />
-                <span>Cryptographic Identity Commitments Only</span>
+                <span>Cryptographic Identity Commitments On-Chain</span>
               </div>
-              <div>
+              <div style={{ background: "var(--surface)" }}>
                 <Network size={16} />
-                <span>Immutable Revocation Register Online</span>
+                <span>Immutable Template Revocation Registry</span>
               </div>
             </div>
           </section>
@@ -599,17 +574,16 @@ function App() {
           <section className="panel" id="audit" aria-labelledby="audit-title">
             <div className="panel-heading">
               <div>
-                <p className="eyebrow">Audit Stream</p>
-                <h2 id="audit-title">Ledger Transaction History</h2>
+                <h2 id="audit-title">Ledger Logs</h2>
               </div>
             </div>
             <div className="table-wrap">
               <table>
                 <thead>
                   <tr>
-                    <th>Ledger Event Action</th>
-                    <th>Subject Identifier</th>
-                    <th>Node Timestamp</th>
+                    <th>Ledger Event</th>
+                    <th>Subject ID</th>
+                    <th>Timestamp</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -617,7 +591,7 @@ function App() {
                     events.map((event) => (
                       <tr key={event.eventId}>
                         <td style={{ fontWeight: "700", color: "var(--accent)" }}>{event.eventType}</td>
-                        <td style={{ fontFamily: "Geist Mono", fontSize: "0.85rem" }}>{event.subjectId}</td>
+                        <td style={{ fontFamily: "Geist Mono", fontSize: "0.8rem" }}>{event.subjectId}</td>
                         <td>{formatDate(event.createdAt)}</td>
                       </tr>
                     ))
@@ -636,8 +610,7 @@ function App() {
           <section className="panel" id="readiness" aria-labelledby="readiness-title">
             <div className="panel-heading">
               <div>
-                <p className="eyebrow">Academic Validation</p>
-                <h2 id="readiness-title">Biometric Compliance Gates</h2>
+                <h2 id="readiness-title">Compliance Gates</h2>
               </div>
             </div>
             <div className="readiness-list">
@@ -645,7 +618,7 @@ function App() {
                 <div className="readiness-row" key={row.name}>
                   <div>
                     <span style={{ display: "block" }}>{row.name}</span>
-                    <strong>{row.scope}</strong>
+                    <strong style={{ fontSize: "0.78rem" }}>{row.scope}</strong>
                   </div>
                   <em>{row.state}</em>
                 </div>
@@ -661,7 +634,7 @@ function App() {
 function Metric({ icon: Icon, label, value }) {
   return (
     <div className="metric">
-      <Icon size={20} />
+      <Icon size={18} />
       <span>{label}</span>
       <strong>{value}</strong>
     </div>
@@ -754,7 +727,7 @@ function resultDetail(primary, liveness) {
   if (label.label === "Idle") {
     return primary;
   }
-  return `${primary} | Liveness Verification: ${label.label}`;
+  return `${primary} | Liveness: ${label.label}`;
 }
 
 function livenessLabel(liveness) {
@@ -764,7 +737,7 @@ function livenessLabel(liveness) {
   if (liveness.passed) {
     return { label: "Passed", tone: "pass" };
   }
-  return { label: "Under Review", tone: "review" };
+  return { label: "Failed", tone: "review" };
 }
 
 async function toBytes32(value) {
