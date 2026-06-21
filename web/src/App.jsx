@@ -102,7 +102,7 @@ function App() {
 
   const api = useMemo(() => createApiClient(apiUrl, apiKey), [apiUrl, apiKey]);
   const payload = useMemo(() => {
-    return { image_base_64: imageBase64 };
+    return { image_base64: imageBase64 };
   }, [imageBase64]);
 
   async function checkIdentity() {
