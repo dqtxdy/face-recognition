@@ -41,11 +41,7 @@ const models = [
   { id: "insightface-buffalo_l", label: "InsightFace Buffalo-L", status: "ArcFace High-Res" },
 ];
 
-const datasetRows = [
-  { name: "NIST LFW Standard", scope: "6,000 balanced pairs evaluation", state: "Completed" },
-  { name: "Synthetic Robustness", scope: "Pose, light, blur corruptions test", state: "Completed" },
-  { name: "Cross-Age / Quality", scope: "CALFW / XQLFW extreme variations", state: "In Pipeline" },
-];
+
 
 function App() {
   const [apiUrl, setApiUrl] = usePersistentState(
@@ -67,7 +63,6 @@ function App() {
   const [apiKey, setApiKey] = usePersistentState("tfc-api-key", "");
   const [health, setHealth] = useState({ status: "unknown", detail: "Unchecked" });
   const [metrics, setMetrics] = useState(null);
-  const [events, setEvents] = useState([]);
   const [subjectId, setSubjectId] = usePersistentState("tfc-subject-id", "subject-pilot-001");
   const [modelVersion, setModelVersion] = useState("demo-image-hash-v1");
   const [threshold, setThreshold] = useState(0.62);
@@ -230,12 +225,8 @@ function App() {
   async function refreshState() {
     setBusyAction("refresh");
     try {
-      const [nextMetrics, audit] = await Promise.all([
-        api.get("/v1/metrics"),
-        api.get("/v1/audit?limit=12"),
-      ]);
+      const nextMetrics = await api.get("/v1/metrics");
       setMetrics(nextMetrics);
-      setEvents(audit.events ?? []);
     } catch (error) {
       setResult({ type: "error", title: "Sync failed", detail: error.message });
     } finally {
@@ -568,62 +559,7 @@ function App() {
           </section>
         </section>
 
-        <section className="two-column">
-          <section className="panel" id="audit" aria-labelledby="audit-title">
-            <div className="panel-heading">
-              <div>
-                <h2 id="audit-title">Ledger Logs</h2>
-              </div>
-            </div>
-            <div className="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Ledger Event</th>
-                    <th>Subject ID</th>
-                    <th>Timestamp</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {events.length ? (
-                    events.map((event) => (
-                      <tr key={event.eventId}>
-                        <td style={{ fontWeight: "700", color: "var(--accent)" }}>{event.eventType}</td>
-                        <td style={{ fontFamily: "Geist Mono", fontSize: "0.8rem" }}>{event.subjectId}</td>
-                        <td>{formatDate(event.createdAt)}</td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan="3" style={{ textAlign: "center", color: "var(--muted)" }}>
-                        No ledger transactions found.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </section>
 
-          <section className="panel" id="readiness" aria-labelledby="readiness-title">
-            <div className="panel-heading">
-              <div>
-                <h2 id="readiness-title">Compliance Gates</h2>
-              </div>
-            </div>
-            <div className="readiness-list">
-              {datasetRows.map((row) => (
-                <div className="readiness-row" key={row.name}>
-                  <div>
-                    <span style={{ display: "block" }}>{row.name}</span>
-                    <strong style={{ fontSize: "0.78rem" }}>{row.scope}</strong>
-                  </div>
-                  <em>{row.state}</em>
-                </div>
-              ))}
-            </div>
-          </section>
-        </section>
       </section>
     </main>
   );
