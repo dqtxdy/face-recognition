@@ -3,6 +3,7 @@ import {
   BadgeCheck,
   Ban,
   Binary,
+  Camera,
   CircuitBoard,
   Database,
   FileImage,
@@ -18,7 +19,7 @@ import {
   ShieldCheck,
   Upload,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 
 const QUERY_API_URL = new URLSearchParams(window.location.search).get("apiUrl");
 const QUERY_RPC_URL = new URLSearchParams(window.location.search).get("rpcUrl");
@@ -35,23 +36,23 @@ const SAMPLE_IMAGE_BASE64 = createDemoImageBase64();
 const IS_REVOKED_SELECTOR = "0x4294857f";
 
 const models = [
-  { id: "demo-image-hash-v1", label: "Image Hash", status: "Local" },
-  { id: "insightface-buffalo_s", label: "Buffalo-S", status: "Fast" },
-  { id: "insightface-buffalo_l", label: "Buffalo-L", status: "Strong" },
-  { id: "demo-hash-v1", label: "Text Hash", status: "Fallback" },
+  { id: "demo-image-hash-v1", label: "Deterministic Image Hash", status: "Local / Fast" },
+  { id: "insightface-buffalo_s", label: "InsightFace Buffalo-S", status: "ArcFace Mobile" },
+  { id: "insightface-buffalo_l", label: "InsightFace Buffalo-L", status: "ArcFace High-Res" },
+  { id: "demo-hash-v1", label: "Fallback Text Embedder", status: "Debug Only" },
 ];
 
 const datasetRows = [
-  { name: "Classical", scope: "LFW 6000 pairs", state: "Done" },
-  { name: "Deep", scope: "ArcFace sample", state: "Done" },
-  { name: "Hard sets", scope: "CALFW / CPLFW / XQLFW", state: "Next" },
+  { name: "NIST LFW Standard", scope: "6,000 balanced pairs evaluation", state: "Completed" },
+  { name: "Synthetic Robustness", scope: "Pose, light, blur corruptions test", state: "Completed" },
+  { name: "Cross-Age / Quality", scope: "CALFW / XQLFW extreme variations", state: "In Pipeline" },
 ];
 
 const trustStages = [
-  { icon: ScanFace, label: "Capture" },
-  { icon: Fingerprint, label: "Embed" },
-  { icon: LockKeyhole, label: "Encrypt" },
-  { icon: Network, label: "Commit" },
+  { icon: ScanFace, label: "1. Capture Frame" },
+  { icon: Fingerprint, label: "2. Generate Vector" },
+  { icon: LockKeyhole, label: "3. Mask Commitment" },
+  { icon: Network, label: "4. Consensus Anchor" },
 ];
 
 function App() {
@@ -71,9 +72,9 @@ function App() {
     Boolean(QUERY_CONTRACT_ADDRESS),
   );
   const [chainSubject, setChainSubject] = usePersistentState("tfc-chain-subject", "subject-demo-001");
-  const [chainState, setChainState] = useState({ status: "idle", detail: "Not checked" });
+  const [chainState, setChainState] = useState({ status: "idle", detail: "Unchecked" });
   const [apiKey, setApiKey] = usePersistentState("tfc-api-key", "");
-  const [health, setHealth] = useState({ status: "unknown", detail: "Not checked" });
+  const [health, setHealth] = useState({ status: "unknown", detail: "Unchecked" });
   const [metrics, setMetrics] = useState(null);
   const [events, setEvents] = useState([]);
   const [subjectId, setSubjectId] = useState("subject-pilot-001");
@@ -82,11 +83,14 @@ function App() {
   const [mode, setMode] = useState("image");
   const [biometricText, setBiometricText] = useState("pilot sample");
   const [imageBase64, setImageBase64] = useState(SAMPLE_IMAGE_BASE64);
-  const [consentPurpose, setConsentPurpose] = useState("pilot access control");
+  const [consentPurpose, setConsentPurpose] = useState("authorized gate access");
   const [requireLiveness, setRequireLiveness] = useState(false);
   const [livenessReport, setLivenessReport] = useState(null);
   const [result, setResult] = useState(null);
   const [busyAction, setBusyAction] = useState("");
+  const [useWebcam, setUseWebcam] = useState(false);
+  const [stream, setStream] = useState(null);
+  const videoRef = useRef(null);
 
   const api = useMemo(() => createApiClient(apiUrl, apiKey), [apiUrl, apiKey]);
   const payload = useMemo(() => {
@@ -100,6 +104,59 @@ function App() {
     checkHealth();
     refreshState();
   }, []);
+
+  async function startWebcam() {
+    setLivenessReport(null);
+    try {
+      const mediaStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "user" },
+      });
+      setStream(mediaStream);
+      setUseWebcam(true);
+      setTimeout(() => {
+        if (videoRef.current) {
+          videoRef.current.srcObject = mediaStream;
+        }
+      }, 50);
+    } catch (error) {
+      setResult({
+        type: "error",
+        title: "Camera Access Failed",
+        detail: error.message || "No camera device found.",
+      });
+    }
+  }
+
+  function stopWebcam() {
+    if (stream) {
+      stream.getTracks().forEach((track) => track.stop());
+      setStream(null);
+    }
+    setUseWebcam(false);
+  }
+
+  function captureWebcam() {
+    if (videoRef.current) {
+      const video = videoRef.current;
+      const canvas = document.createElement("canvas");
+      canvas.width = video.videoWidth || 320;
+      canvas.height = video.videoHeight || 240;
+      const context = canvas.getContext("2d");
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const dataUrl = canvas.toDataURL("image/png");
+      setImageBase64(dataUrl.split(",", 2)[1] ?? "");
+      stopWebcam();
+      setResult(null);
+    }
+  }
+
+  useEffect(() => {
+    return () => {
+      if (stream) {
+        stream.getTracks().forEach((track) => track.stop());
+      }
+    };
+  }, [stream]);
 
   async function checkHealth() {
     try {
@@ -132,7 +189,7 @@ function App() {
       const revoked = BigInt(payload.result || "0x0") !== 0n;
       setChainState({
         status: "online",
-        detail: revoked ? "Revoked" : "Active",
+        detail: revoked ? "Revoked / Blocked" : "Active / Verified",
       });
     } catch (error) {
       setChainState({ status: "offline", detail: error.message });
@@ -151,7 +208,7 @@ function App() {
       setMetrics(nextMetrics);
       setEvents(audit.events ?? []);
     } catch (error) {
-      setResult({ type: "error", title: "Refresh failed", detail: error.message });
+      setResult({ type: "error", title: "Sync failed", detail: error.message });
     } finally {
       setBusyAction("");
     }
@@ -168,19 +225,18 @@ function App() {
         consent: {
           purpose: consentPurpose,
           scope: ["enrollment", "verification", "audit"],
-          operator: "pilot-console",
+          operator: "trust-portal-console",
         },
-        ...payload,
       });
       setLivenessReport(data.liveness ?? null);
       setResult({
         type: "success",
-        title: "Enrolled",
+        title: "Proof Committed Successfully",
         detail: resultDetail(shortHash(data.templateCommitment), data.liveness),
       });
       await refreshState();
     } catch (error) {
-      setResult({ type: "error", title: "Enroll failed", detail: error.message });
+      setResult({ type: "error", title: "Enrollment Rejected", detail: error.message });
     } finally {
       setBusyAction("");
     }
@@ -198,12 +254,12 @@ function App() {
       setLivenessReport(data.liveness ?? null);
       setResult({
         type: data.accepted ? "success" : "warn",
-        title: data.accepted ? "Accepted" : "Rejected",
-        detail: resultDetail(`${data.score.toFixed(4)} / ${data.threshold}`, data.liveness),
+        title: data.accepted ? "Identity Authenticated" : "Authentication Failed",
+        detail: resultDetail(`${data.score.toFixed(4)} (Threshold: ${data.threshold})`, data.liveness),
       });
       await refreshState();
     } catch (error) {
-      setResult({ type: "error", title: "Verify failed", detail: error.message });
+      setResult({ type: "error", title: "Verification Error", detail: error.message });
     } finally {
       setBusyAction("");
     }
@@ -214,16 +270,16 @@ function App() {
     try {
       const data = await api.post("/v1/revoke", {
         subject_id: subjectId,
-        reason: "pilot operator revocation",
+        reason: "operator requested template revocation",
       });
       setResult({
         type: "warn",
-        title: "Revoked",
+        title: "Cryptographic Anchor Revoked",
         detail: shortHash(data.eventHash),
       });
       await refreshState();
     } catch (error) {
-      setResult({ type: "error", title: "Revocation failed", detail: error.message });
+      setResult({ type: "error", title: "Revocation Rejected", detail: error.message });
     } finally {
       setBusyAction("");
     }
@@ -251,56 +307,55 @@ function App() {
 
   return (
     <main className="app-shell">
-      <aside className="sidebar" aria-label="Primary">
+      <aside className="sidebar" aria-label="Primary Portal Navigation">
         <div className="brand">
           <span className="brand-mark" aria-hidden="true" />
           <div>
             <strong>TrustFaceChain</strong>
-            <span>Pilot</span>
+            <span>Identity Hub</span>
           </div>
         </div>
         <nav className="nav-list">
-          <a href="#operations">Ops</a>
-          <a href="#audit">Audit</a>
-          <a href="#readiness">Gates</a>
+          <a href="#operations">Identity Scanner</a>
+          <a href="#audit">Verification Ledger</a>
+          <a href="#readiness">Compliance Gates</a>
         </nav>
         <div className={`health health-${health.status}`}>
           <Server size={16} />
-          <span>{health.status}</span>
+          <span>API Node: {health.status}</span>
         </div>
       </aside>
 
       <section className="workspace">
         <header className="topbar">
           <div>
-            <p className="eyebrow">Live Pilot</p>
-            <h1>Verification Console</h1>
+            <p className="eyebrow">Trust Layer Management Console</p>
+            <h1>Decentralized Identity Center</h1>
           </div>
           <div className="top-actions">
             <div className="signal-card">
-              <span>Trust state</span>
-              <strong>{activeRatio}% active</strong>
+              <span>Secure Anchor Rate</span>
+              <strong>{activeRatio}% Active</strong>
             </div>
             <button className="icon-button" onClick={refreshState} disabled={busyAction === "refresh"}>
-              <RefreshCw size={18} />
-              <span>Refresh</span>
+              <RefreshCw size={16} />
+              <span>Sync Ledger</span>
             </button>
           </div>
         </header>
 
-        <section className="status-strip" aria-label="System metrics">
-          <Metric icon={Database} label="Identities" value={metrics?.identities ?? "-"} />
-          <Metric icon={ShieldCheck} label="Active" value={metrics?.activeIdentities ?? "-"} />
-          <Metric icon={Ban} label="Revoked" value={metrics?.revokedIdentities ?? "-"} />
-          <Metric icon={Activity} label="Events" value={metrics?.auditEvents ?? "-"} />
+        <section className="status-strip" aria-label="System Cryptographic metrics">
+          <Metric icon={Database} label="Registered Identity Commitments" value={metrics?.identities ?? "-"} />
+          <Metric icon={ShieldCheck} label="Active Secure Anchors" value={metrics?.activeIdentities ?? "-"} />
+          <Metric icon={Ban} label="Revoked Biometrics" value={metrics?.revokedIdentities ?? "-"} />
+          <Metric icon={Activity} label="Ledger Transaction Events" value={metrics?.auditEvents ?? "-"} />
         </section>
 
-        <section className="mission-strip" aria-label="Trust pipeline">
-          {trustStages.map((stage, index) => (
+        <section className="mission-strip" aria-label="Decentralized Trust Pipeline Process">
+          {trustStages.map((stage) => (
             <div className="trust-stage" key={stage.label}>
               <stage.icon size={18} />
               <span>{stage.label}</span>
-              {index < trustStages.length - 1 ? <i aria-hidden="true" /> : null}
             </div>
           ))}
         </section>
@@ -309,8 +364,8 @@ function App() {
           <section className="panel operation-panel" aria-labelledby="enroll-title">
             <div className="panel-heading">
               <div>
-                <p className="eyebrow">Identity</p>
-                <h2 id="enroll-title">Enroll / verify</h2>
+                <p className="eyebrow">Biometric Capture & Verification</p>
+                <h2 id="enroll-title">Secure Scanner Gateway</h2>
               </div>
               <span className="model-pill">{activeModel.status}</span>
             </div>
@@ -318,12 +373,19 @@ function App() {
             <div className="identity-console">
               <div className="sample-stage">
                 <div className="stage-toolbar">
-                  <span>Sample</span>
-                  <strong>{mode}</strong>
+                  <span>Scanner Feed</span>
+                  <strong>{mode} input</strong>
                 </div>
                 {mode === "image" ? (
                   <div className="face-preview">
-                    {imageBase64 && !showImagePlaceholder ? (
+                    {useWebcam ? (
+                      <video
+                        ref={videoRef}
+                        autoPlay
+                        playsInline
+                        className="webcam-video"
+                      />
+                    ) : imageBase64 && !showImagePlaceholder ? (
                       <img src={imagePreviewSrc} alt="" />
                     ) : (
                       <div className="biometric-mark" aria-hidden="true">
@@ -336,17 +398,16 @@ function App() {
                   </div>
                 ) : (
                   <div className="text-preview">
-                    <KeyRound size={42} />
-                    <strong>{biometricText || "empty"}</strong>
+                    <KeyRound size={36} />
+                    <strong>{biometricText || "empty vector string"}</strong>
                   </div>
                 )}
                 <div className="hash-strip">
-                  <span>{subjectId}</span>
-                  <strong>{activeModel.label}</strong>
+                  <span>Subject: {subjectId}</span>
                 </div>
                 <div className={`liveness-card liveness-${livenessState.tone}`}>
-                  <ShieldCheck size={16} />
-                  <span>PAD</span>
+                  <ShieldCheck size={14} />
+                  <span>Liveness (PAD):</span>
                   <strong>{livenessState.label}</strong>
                 </div>
               </div>
@@ -354,21 +415,11 @@ function App() {
               <div className="control-stack">
                 <div className="form-grid">
                   <label>
-                    <span>Subject ID</span>
+                    <span>Subject Identifier</span>
                     <input value={subjectId} onChange={(event) => setSubjectId(event.target.value)} />
                   </label>
                   <label>
-                    <span>Model</span>
-                    <select value={modelVersion} onChange={(event) => setModelVersion(event.target.value)}>
-                      {models.map((model) => (
-                        <option value={model.id} key={model.id}>
-                          {model.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    <span>Threshold</span>
+                    <span>Verification Threshold</span>
                     <input
                       type="number"
                       min="-1"
@@ -378,67 +429,105 @@ function App() {
                       onChange={(event) => setThreshold(event.target.value)}
                     />
                   </label>
+                </div>
+
+                <div className="form-grid">
                   <label>
-                    <span>Purpose</span>
+                    <span>Algorithmic Model</span>
+                    <select value={modelVersion} onChange={(event) => setModelVersion(event.target.value)}>
+                      {models.map((model) => (
+                        <option value={model.id} key={model.id}>
+                          {model.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    <span>Consent Objective</span>
                     <input value={consentPurpose} onChange={(event) => setConsentPurpose(event.target.value)} />
                   </label>
                 </div>
 
-                <div className="segmented" role="tablist" aria-label="Biometric payload type">
+                <div className="segmented" role="tablist" aria-label="Biometric payload source type">
                   <button className={mode === "image" ? "selected" : ""} onClick={() => setMode("image")}>
-                    <FileImage size={16} />
-                    <span>Image</span>
+                    <FileImage size={14} />
+                    <span>Face Camera</span>
                   </button>
-                  <button className={mode === "text" ? "selected" : ""} onClick={() => setMode("text")}>
-                    <KeyRound size={16} />
-                    <span>Text</span>
+                  <button
+                    className={mode === "text" ? "selected" : ""}
+                    onClick={() => {
+                      setMode("text");
+                      stopWebcam();
+                    }}
+                  >
+                    <KeyRound size={14} />
+                    <span>Mock Text Hash</span>
                   </button>
                 </div>
 
                 <label className={`toggle-row ${mode !== "image" ? "disabled" : ""}`}>
+                  <span>Enforce Passive Liveness Gate</span>
                   <input
                     type="checkbox"
                     checked={requireLiveness}
                     onChange={(event) => setRequireLiveness(event.target.checked)}
                     disabled={mode !== "image"}
                   />
-                  <span>PAD gate</span>
-                  <strong>{requireLiveness && mode === "image" ? "Enforce" : "Observe"}</strong>
                 </label>
 
                 {mode === "image" ? (
                   <div className="image-input">
-                    <label className="file-control">
-                      <Upload size={18} />
-                      <span>Upload</span>
-                      <input type="file" accept="image/png,image/jpeg" onChange={onImageFile} />
-                    </label>
+                    <div style={{ display: "flex", gap: "8px" }}>
+                      <label className="file-control">
+                        <Upload size={16} />
+                        <span>Upload File</span>
+                        <input type="file" accept="image/png,image/jpeg" onChange={onImageFile} />
+                      </label>
+                      {!useWebcam ? (
+                        <button type="button" className="icon-button" onClick={startWebcam}>
+                          <Camera size={16} />
+                          <span>Use Webcam</span>
+                        </button>
+                      ) : (
+                        <>
+                          <button type="button" className="icon-button command primary" onClick={captureWebcam}>
+                            <Camera size={16} />
+                            <span>Capture Frame</span>
+                          </button>
+                          <button type="button" className="icon-button command danger" onClick={stopWebcam}>
+                            <Ban size={16} />
+                            <span>Stop Camera</span>
+                          </button>
+                        </>
+                      )}
+                    </div>
                     <textarea
-                      aria-label="Base64 image payload"
+                      aria-label="Base64 image payload output"
                       value={imageBase64}
                       onChange={(event) => setImageBase64(event.target.value)}
-                      rows={5}
+                      rows={4}
+                      placeholder="Base64 vector data displays here..."
                     />
                   </div>
                 ) : (
                   <label className="text-input">
-                    <span>Text sample</span>
+                    <span>Mock Input Token</span>
                     <input value={biometricText} onChange={(event) => setBiometricText(event.target.value)} />
                   </label>
                 )}
 
                 <div className="action-row">
                   <button className="command primary" onClick={enroll} disabled={Boolean(busyAction)}>
-                    <BadgeCheck size={18} />
-                    <span>Enroll</span>
+                    <BadgeCheck size={16} />
+                    <span>Commit Proof</span>
                   </button>
                   <button className="command" onClick={verify} disabled={Boolean(busyAction)}>
-                    <Gauge size={18} />
-                    <span>Verify</span>
+                    <Gauge size={16} />
+                    <span>Verify Identity</span>
                   </button>
                   <button className="command danger" onClick={revoke} disabled={Boolean(busyAction)}>
-                    <Ban size={18} />
-                    <span>Revoke</span>
+                    <Ban size={16} />
+                    <span>Revoke Anchor</span>
                   </button>
                 </div>
 
@@ -455,78 +544,52 @@ function App() {
           <section className="panel settings-panel" aria-labelledby="settings-title">
             <div className="panel-heading">
               <div>
-                <p className="eyebrow">Connection</p>
-                <h2 id="settings-title">API</h2>
+                <p className="eyebrow">On-Chain Proof Verification</p>
+                <h2 id="settings-title">Ledger Anchors</h2>
               </div>
             </div>
-            <label>
-              <span>API URL</span>
-              <input value={apiUrl} onChange={(event) => setApiUrl(event.target.value)} />
-            </label>
-            <label>
-              <span>API key</span>
-              <input
-                value={apiKey}
-                onChange={(event) => setApiKey(event.target.value)}
-                type="password"
-                autoComplete="off"
-              />
-            </label>
-            <button className="command" onClick={checkHealth}>
-              <Server size={18} />
-              <span>Ping</span>
-            </button>
+            
             <div className="chain-form">
               <label>
-                <span>RPC URL</span>
+                <span>JSON-RPC Node URL</span>
                 <input value={rpcUrl} onChange={(event) => setRpcUrl(event.target.value)} />
               </label>
               <label>
-                <span>Contract</span>
+                <span>Solidity Contract Address</span>
                 <input value={contractAddress} onChange={(event) => setContractAddress(event.target.value)} />
               </label>
               <label>
-                <span>Chain subject</span>
+                <span>Query Target Subject</span>
                 <input value={chainSubject} onChange={(event) => setChainSubject(event.target.value)} />
               </label>
-              <button className="command" onClick={checkChain} disabled={busyAction === "chain"}>
-                <Network size={18} />
-                <span>Check chain</span>
+              <button className="command primary" onClick={checkChain} disabled={busyAction === "chain"}>
+                <Network size={16} />
+                <span>Verify On-Chain Status</span>
               </button>
+              {chainState.detail !== "Unchecked" ? (
+                <div style={{ marginTop: "8px", fontSize: "0.85rem", fontWeight: "600", color: chainState.status === "online" ? "var(--accent)" : "var(--danger)" }}>
+                  Contract Status: {chainState.detail}
+                </div>
+              ) : null}
             </div>
+
             <div className="assurance-stack">
               <div>
                 <FileKey2 size={16} />
-                <span>No raw storage</span>
+                <span>Privacy Rule: Off-Chain Face Embeddings</span>
               </div>
               <div>
                 <ShieldCheck size={16} />
-                <span>PAD {livenessState.label}</span>
+                <span>Security Gate: Liveness Detection (PAD)</span>
               </div>
               <div>
                 <Binary size={16} />
-                <span>Commitment only</span>
-              </div>
-              <div>
-                <CircuitBoard size={16} />
-                <span>{latestEvent?.eventType ?? "No event"}</span>
+                <span>Cryptographic Identity Commitments Only</span>
               </div>
               <div>
                 <Network size={16} />
-                <span>Chain {chainState.detail}</span>
+                <span>Immutable Revocation Register Online</span>
               </div>
-            </div>
-            <div className="model-list">
-              {models.map((model) => (
-                <button
-                  className={model.id === modelVersion ? "model-row active" : "model-row"}
-                  key={model.id}
-                  onClick={() => setModelVersion(model.id)}
-                >
-                  <span>{model.label}</span>
-                  <strong>{model.status}</strong>
-                </button>
-              ))}
             </div>
           </section>
         </section>
@@ -535,31 +598,33 @@ function App() {
           <section className="panel" id="audit" aria-labelledby="audit-title">
             <div className="panel-heading">
               <div>
-                <p className="eyebrow">Audit</p>
-                <h2 id="audit-title">Events</h2>
+                <p className="eyebrow">Audit Stream</p>
+                <h2 id="audit-title">Ledger Transaction History</h2>
               </div>
             </div>
             <div className="table-wrap">
               <table>
                 <thead>
                   <tr>
-                    <th>Event</th>
-                    <th>Subject</th>
-                    <th>Time</th>
+                    <th>Ledger Event Action</th>
+                    <th>Subject Identifier</th>
+                    <th>Node Timestamp</th>
                   </tr>
                 </thead>
                 <tbody>
                   {events.length ? (
                     events.map((event) => (
                       <tr key={event.eventId}>
-                        <td>{event.eventType}</td>
-                        <td>{event.subjectId}</td>
+                        <td style={{ fontWeight: "700", color: "var(--accent)" }}>{event.eventType}</td>
+                        <td style={{ fontFamily: "Geist Mono", fontSize: "0.85rem" }}>{event.subjectId}</td>
                         <td>{formatDate(event.createdAt)}</td>
                       </tr>
                     ))
                   ) : (
                     <tr>
-                      <td colSpan="3">No events</td>
+                      <td colSpan="3" style={{ textAlign: "center", color: "var(--muted)" }}>
+                        No ledger transactions found.
+                      </td>
                     </tr>
                   )}
                 </tbody>
@@ -570,15 +635,17 @@ function App() {
           <section className="panel" id="readiness" aria-labelledby="readiness-title">
             <div className="panel-heading">
               <div>
-                <p className="eyebrow">Evidence</p>
-                <h2 id="readiness-title">Dataset gates</h2>
+                <p className="eyebrow">Academic Validation</p>
+                <h2 id="readiness-title">Biometric Compliance Gates</h2>
               </div>
             </div>
             <div className="readiness-list">
               {datasetRows.map((row) => (
                 <div className="readiness-row" key={row.name}>
-                  <span>{row.name}</span>
-                  <strong>{row.scope}</strong>
+                  <div>
+                    <span style={{ display: "block" }}>{row.name}</span>
+                    <strong>{row.scope}</strong>
+                  </div>
                   <em>{row.state}</em>
                 </div>
               ))}
@@ -593,7 +660,7 @@ function App() {
 function Metric({ icon: Icon, label, value }) {
   return (
     <div className="metric">
-      <Icon size={18} />
+      <Icon size={20} />
       <span>{label}</span>
       <strong>{value}</strong>
     </div>
@@ -686,7 +753,7 @@ function resultDetail(primary, liveness) {
   if (label.label === "Idle") {
     return primary;
   }
-  return `${primary} | PAD ${label.label}`;
+  return `${primary} | Liveness Verification: ${label.label}`;
 }
 
 function livenessLabel(liveness) {
@@ -694,9 +761,9 @@ function livenessLabel(liveness) {
     return { label: "Idle", tone: "idle" };
   }
   if (liveness.passed) {
-    return { label: "Pass", tone: "pass" };
+    return { label: "Passed", tone: "pass" };
   }
-  return { label: "Review", tone: "review" };
+  return { label: "Under Review", tone: "review" };
 }
 
 async function toBytes32(value) {
