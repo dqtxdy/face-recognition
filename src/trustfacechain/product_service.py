@@ -321,6 +321,21 @@ class TrustFaceProductService:
             embedder = DeterministicHashEmbedder(name=model_version, embedding_dim=128)
             return embedder.embed(canonical)
 
+        if model_version == "facenet":
+            embedder = self._image_embedders.get(model_version)
+            if embedder is None:
+                try:
+                    from trustfacechain.models.deep_adapters import FaceNetPytorchEmbedder
+                    embedder = FaceNetPytorchEmbedder()
+                except RuntimeError as error:
+                    raise UnsupportedModelVersion(str(error)) from error
+                self._image_embedders[model_version] = embedder
+            try:
+                embedding = embedder.embed(_image_bytes_to_rgb_array(image_bytes))
+            except ValueError as error:
+                raise InvalidBiometricInput(str(error)) from error
+            return [float(value) for value in embedding.tolist()]
+
         model_pack = _insightface_pack_for(model_version)
         if model_pack is None:
             raise UnsupportedModelVersion(
@@ -384,7 +399,7 @@ def _load_or_create_key(key_path: str | Path) -> bytes:
 
 
 def _embed_text(model_version: str, text: str) -> list[float]:
-    if _insightface_pack_for(model_version) is not None:
+    if _insightface_pack_for(model_version) is not None or model_version == "facenet":
         raise InvalidBiometricInput(
             f"{model_version} requires image_base64 input, not biometric_input text"
         )
