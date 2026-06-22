@@ -89,6 +89,14 @@ def _selected_embedders(model_names: str | None) -> list[object]:
                 "buffalo_m is downloaded but not supported by the FaceAnalysis adapter "
                 "because this pack does not expose the expected detection model."
             )
+        elif name in {"facenet", "facenet-pytorch"}:
+            from trustfacechain.models.deep_adapters import FaceNetPytorchEmbedder
+
+            embedders.append(FaceNetPytorchEmbedder())
+        elif name in {"siamese", "siamese-cnn"}:
+            from trustfacechain.models.siamese import SiameseEmbedder
+
+            embedders.append(SiameseEmbedder())
         else:
             embedders.append(create_embedder(name))
     return embedders
@@ -243,6 +251,54 @@ def _cmd_demo_chain_flow(_: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_train_siamese(args: argparse.Namespace) -> int:
+    from trustfacechain.datasets import load_lfw_people_dataset, make_pairs
+    from trustfacechain.models.siamese import train_siamese_model
+
+    print("Loading LFW training samples...")
+    samples = load_lfw_people_dataset(
+        min_faces_per_person=2,
+        max_samples=args.max_samples,
+        data_home=args.data_home,
+    )
+
+    print("Generating genuine and impostor pairs for training...")
+    pairs = make_pairs(
+        samples,
+        pairs_per_identity=args.pairs_per_identity,
+        impostor_pairs=args.impostor_pairs,
+        seed=args.seed,
+    )
+
+    if args.num_pairs is not None:
+        pairs = pairs[:args.num_pairs]
+
+    train_siamese_model(
+        epochs=args.epochs,
+        batch_size=args.batch_size,
+        lr=args.lr,
+        train_pairs=pairs,
+        save_path=args.save_path,
+    )
+    print("Siamese training finished successfully.")
+    return 0
+
+
+def _cmd_ablation_study(args: argparse.Namespace) -> int:
+    from trustfacechain.datasets import load_lfw_official_pairs
+    from trustfacechain.ablation import run_ablation_suite
+
+    print("Loading LFW pairs for ablation study...")
+    pairs = load_lfw_official_pairs(
+        max_pairs=args.max_pairs,
+        data_home=args.data_home,
+        balanced_subset=not args.unbalanced,
+    )
+
+    run_ablation_suite(pairs, output_csv=args.csv)
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="trustfacechain")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -269,6 +325,22 @@ def build_parser() -> argparse.ArgumentParser:
     protect.add_argument("--app-salt", required=True)
     protect.add_argument("--vector", required=True)
     protect.set_defaults(func=_cmd_protect_template)
+
+    train_siamese = subparsers.add_parser(
+        "train-siamese",
+        help="Train a self-trained Siamese CNN model on LFW images.",
+    )
+    train_siamese.add_argument("--epochs", type=int, default=5)
+    train_siamese.add_argument("--batch-size", type=int, default=32)
+    train_siamese.add_argument("--lr", type=float, default=0.001)
+    train_siamese.add_argument("--num-pairs", type=int, default=1000)
+    train_siamese.add_argument("--pairs-per-identity", type=int, default=4)
+    train_siamese.add_argument("--impostor-pairs", type=int)
+    train_siamese.add_argument("--max-samples", type=int)
+    train_siamese.add_argument("--data-home", default="data/cache/scikit_learn")
+    train_siamese.add_argument("--seed", type=int, default=7)
+    train_siamese.add_argument("--save-path", default="data/cache/siamese_net.pt")
+    train_siamese.set_defaults(func=_cmd_train_siamese)
 
     demo = subparsers.add_parser(
         "benchmark-demo",
@@ -350,6 +422,16 @@ def build_parser() -> argparse.ArgumentParser:
         help="Run a local enroll -> verify -> revoke contract simulation.",
     )
     chain.set_defaults(func=_cmd_demo_chain_flow)
+
+    ablation = subparsers.add_parser(
+        "ablation-study",
+        help="Run systematic ablation studies on LFW official pairs.",
+    )
+    ablation.add_argument("--max-pairs", type=int, default=50)
+    ablation.add_argument("--data-home", default="data/cache/scikit_learn")
+    ablation.add_argument("--unbalanced", action="store_true")
+    ablation.add_argument("--csv", default="reports/ablation_results.csv")
+    ablation.set_defaults(func=_cmd_ablation_study)
 
     return parser
 

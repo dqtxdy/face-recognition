@@ -8,6 +8,7 @@ from trustfacechain.models.classical import (
     PixelEmbedder,
 )
 from trustfacechain.models.hash_embedder import DeterministicHashEmbedder
+from trustfacechain.models.siamese import SiameseEmbedder
 
 __all__ = [
     "DctEmbedder",
@@ -16,4 +17,5 @@ __all__ = [
     "FaceEmbedder",
     "LbpHistogramEmbedder",
     "PixelEmbedder",
+    "SiameseEmbedder",
 ]
