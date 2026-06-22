@@ -18,6 +18,12 @@ chain-demo:
 robustness-demo:
 	PYTHONPATH=src python3 -m trustfacechain.cli robustness-demo --csv reports/robustness_demo.csv
 
+train-siamese:
+	PYTHONPATH=vendor/face:src python3 -m trustfacechain.cli train-siamese --epochs 5 --num-pairs 1000 --save-path data/cache/siamese_net.pt
+
+ablation-study:
+	PYTHONPATH=vendor/face:src python3 -m trustfacechain.cli ablation-study --max-pairs $${PAIRS:-200} --csv reports/ablation_results.csv
+
 deep-smoke:
 	PYTHONPATH=vendor/face:src python3 -m trustfacechain.cli benchmark-lfw-pairs --max-pairs 20 --models arcface,mobileface --csv reports/lfw_deep_smoke_metrics.csv --json reports/lfw_deep_smoke_report.json
 

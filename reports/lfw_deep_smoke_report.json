@@ -8,9 +8,9 @@
     "accuracy": 1.0,
     "eer": 0.0,
     "eer_threshold": 0.29665398597717285,
-    "fit_seconds": 1.3542001397581771e-05,
-    "embed_seconds": 20.081984829001158,
-    "score_seconds": 0.00010310300058335997,
+    "fit_seconds": 6.6020002122968435e-06,
+    "embed_seconds": 19.711468298999534,
+    "score_seconds": 0.00011021200043614954,
     "operating_points": [
       {
         "threshold": -0.17356711726052856,
@@ -254,9 +254,9 @@
     "accuracy": 1.0,
     "eer": 0.0,
     "eer_threshold": 0.2547215558588505,
-    "fit_seconds": 7.859001925680786e-06,
-    "embed_seconds": 8.435068683000281,
-    "score_seconds": 6.256699998630211e-05,
+    "fit_seconds": 8.107999747153372e-06,
+    "embed_seconds": 7.904236048001621,
+    "score_seconds": 8.008700024220161e-05,
     "operating_points": [
       {
         "threshold": -0.11259081314666367,

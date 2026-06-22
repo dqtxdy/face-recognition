@@ -40,6 +40,7 @@ class InsightFaceArcFaceEmbedder:
         model_pack: str = "buffalo_l",
         provider: str = "CPUExecutionProvider",
         model_root: str | Path = "data/cache/insightface",
+        bypass_detection: bool = False,
     ):
         try:
             from insightface.app import FaceAnalysis
@@ -51,6 +52,9 @@ class InsightFaceArcFaceEmbedder:
 
         self.version = model_pack
         self.name = f"insightface-{model_pack}"
+        self.bypass_detection = bypass_detection
+        if self.bypass_detection:
+            self.name = f"{self.name}-no-align"
         self._app = FaceAnalysis(name=self.version, root=str(model_root), providers=[provider])
         self._app.prepare(ctx_id=-1, det_size=(640, 640))
         self._recognition = self._app.models.get("recognition")
@@ -59,6 +63,17 @@ class InsightFaceArcFaceEmbedder:
         return None
 
     def embed(self, image: np.ndarray) -> np.ndarray:
+        if self.bypass_detection or self._recognition is None:
+            aligned = _as_rgb_uint8(image)
+            from PIL import Image
+
+            aligned = np.asarray(
+                Image.fromarray(aligned).resize((112, 112), Image.Resampling.BILINEAR),
+                dtype=np.uint8,
+            )
+            embedding = self._recognition.get_feat(aligned[:, :, ::-1])[0]
+            return normalize_vector(np.asarray(embedding, dtype=np.float32))
+
         rgb = _as_rgb_uint8(image)
         bgr = rgb[:, :, ::-1]
         faces = self._app.get(bgr)

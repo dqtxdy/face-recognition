@@ -1,0 +1,2 @@
+model,version,embedding_dim,pairs,best_threshold,accuracy,eer,eer_threshold,fit_seconds,embed_seconds,score_seconds
+facenet-pytorch,vggface2,512,50,0.4239642024040222,1.0,0.0,0.4239642024040222,1.0403000487713143e-05,5.234370460999344,0.00011667600119835697
